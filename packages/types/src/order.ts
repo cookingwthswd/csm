@@ -1,5 +1,30 @@
 import { z } from 'zod';
 
+/**
+ * Order Types for CKMS
+ *
+ * Zod 4.x Changes:
+ * - z.string().date() → DEPRECATED
+ * - Use z.string().regex() with ISO date pattern instead
+ */
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * ISO Date string validator (YYYY-MM-DD)
+ * Zod 4.x: Replace deprecated .date() with regex
+ */
+const isoDateString = z.string().regex(
+  /^\d{4}-\d{2}-\d{2}$/,
+  { message: 'Must be YYYY-MM-DD format' }
+);
+
+// ═══════════════════════════════════════════════════════════
+// ORDER STATUS
+// ═══════════════════════════════════════════════════════════
+
 export const OrderStatus = z.enum([
   'draft',
   'submitted',
@@ -12,6 +37,10 @@ export const OrderStatus = z.enum([
 ]);
 export type OrderStatus = z.infer<typeof OrderStatus>;
 
+// ═══════════════════════════════════════════════════════════
+// CREATE ORDER DTOs
+// ═══════════════════════════════════════════════════════════
+
 export const CreateOrderItemDto = z.object({
   productId: z.number().int().positive(),
   quantity: z.number().int().positive(),
@@ -20,7 +49,7 @@ export type CreateOrderItemDto = z.infer<typeof CreateOrderItemDto>;
 
 export const CreateOrderDto = z.object({
   storeId: z.number().int().positive(),
-  requestedDate: z.string().date(),
+  requestedDate: isoDateString, // Using non-deprecated validator
   notes: z.string().optional(),
   items: z.array(CreateOrderItemDto).min(1),
 });

@@ -187,3 +187,17 @@ SELECT setval('batches_id_seq', 7);
 SELECT setval('orders_id_seq', 5);
 SELECT setval('shipments_id_seq', 2);
 SELECT setval('production_plans_id_seq', 2);
+
+-- ==========================================
+-- 13. TEST USERS
+-- ==========================================
+-- NOTE: Do NOT insert directly into auth.users - it will break Supabase Auth!
+-- Instead, create users via Supabase Studio:
+-- 1. Open http://127.0.0.1:54323
+-- 2. Go to Authentication > Users
+-- 3. Click "Add User" and create with email/password
+-- 4. Then run the SQL below to link to public.users
+
+-- After creating user in Studio, get the UUID and run:
+-- INSERT INTO public.users (id, email, full_name, role, store_id, is_active) VALUES
+--   ('<uuid-from-studio>', 'admin@ckms.local', 'Admin User', 'admin', NULL, true);

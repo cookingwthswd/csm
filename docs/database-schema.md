@@ -269,20 +269,84 @@ Store orders to central kitchen.
 | delivery_date | DATE | Requested delivery |
 | notes | TEXT | Order notes |
 
-**Status Flow:**
+**Status Flow với Role thực hiện:**
+
 ```
-pending → approved → processing → shipping → delivered
-                  ↘ cancelled
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ORDER STATUS FLOW                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [store_staff]        [manager]         [ck_staff]       [coordinator]      │
+│       │                   │                  │                 │            │
+│       ▼                   ▼                  ▼                 ▼            │
+│   ┌────────┐        ┌──────────┐      ┌────────────┐    ┌──────────┐       │
+│   │pending │───────►│ approved │─────►│ processing │───►│ shipping │       │
+│   └───┬────┘        └────┬─────┘      └─────┬──────┘    └────┬─────┘       │
+│       │                  │                  │                 │            │
+│       │                  │                  │                 ▼            │
+│       │                  │                  │           ┌───────────┐      │
+│       │                  │                  │           │ delivered │      │
+│       ▼                  ▼                  │           └───────────┘      │
+│   ┌─────────┐      ┌─────────┐              │                              │
+│   │cancelled│      │cancelled│              │                              │
+│   └─────────┘      └─────────┘              │                              │
+│                                             │                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-| Status | Meaning | Actions |
-|--------|---------|---------|
-| `pending` | Awaiting approval | Edit, Cancel |
-| `approved` | Confirmed by manager | Start processing |
-| `processing` | In production | Track progress |
-| `shipping` | Out for delivery | Track shipment |
-| `delivered` | Complete | Close |
-| `cancelled` | Cancelled | N/A |
+| Status | Ai thực hiện | Hành động | DB Changes |
+|--------|--------------|-----------|------------|
+| `pending` | **store_staff** | Tạo đơn hàng mới | `created_by = user.id` |
+| `approved` | **manager** | Duyệt đơn hàng | `confirmed_by = user.id`, `status = 'approved'` |
+| `processing` | **ck_staff** | Bắt đầu sản xuất | `status = 'processing'`, tạo `production_plan` |
+| `shipping` | **coordinator** | Xuất kho giao hàng | `status = 'shipping'`, tạo `shipment` |
+| `delivered` | **coordinator** | Xác nhận đã giao | `status = 'delivered'`, `shipment.delivered_date` |
+| `cancelled` | **store_staff** / **manager** | Hủy đơn | `status = 'cancelled'` |
+
+### Chi tiết từng bước:
+
+**1. pending → approved (Manager duyệt)**
+```
+Điều kiện: user.role IN ('admin', 'manager')
+Action: UPDATE orders SET status='approved', confirmed_by=? WHERE id=?
+```
+
+**2. approved → processing (CK Staff bắt đầu sản xuất)**
+```
+Điều kiện: user.role IN ('admin', 'ck_staff')
+Action:
+  - UPDATE orders SET status='processing'
+  - INSERT INTO production_plans (...)
+  - INSERT INTO production_details (item_id, quantity_planned, ...)
+```
+
+**3. processing → shipping (Coordinator xuất kho)**
+```
+Điều kiện: user.role IN ('admin', 'coordinator')
+Action:
+  - UPDATE orders SET status='shipping'
+  - INSERT INTO shipments (order_id, status='preparing', ...)
+  - INSERT INTO shipment_items (batch_id, quantity_shipped, ...)
+  - UPDATE inventory SET quantity = quantity - shipped_qty
+  - INSERT INTO inventory_transactions (type='export', ...)
+```
+
+**4. shipping → delivered (Coordinator xác nhận giao)**
+```
+Điều kiện: user.role IN ('admin', 'coordinator', 'store_staff')
+Action:
+  - UPDATE orders SET status='delivered'
+  - UPDATE shipments SET status='delivered', delivered_date=NOW()
+  - UPDATE inventory (store) SET quantity = quantity + received_qty
+  - INSERT INTO inventory_transactions (type='import', ...)
+```
+
+**5. Cancel flow**
+```
+pending → cancelled: store_staff (người tạo) hoặc manager
+approved → cancelled: chỉ manager/admin
+processing trở đi: KHÔNG THỂ cancel (phải xử lý riêng)
+```
 
 ---
 

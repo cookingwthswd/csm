@@ -54,7 +54,7 @@ export class OrdersController {
   @Get()
   @ApiOperation({ summary: 'List orders for current chain' })
   @ApiResponse({ status: 200, description: 'List of orders with pagination' })
-  @Roles('admin', 'manager', 'supply_coordinator', 'store_staff')
+  @Roles('admin', 'manager', 'coordinator', 'store_staff')
   findAll(
     @CurrentUser() user: AuthUser, // Inject từ JWT
     @Query() pagination: PaginationDto, // Auto-validate & transform
@@ -74,7 +74,7 @@ export class OrdersController {
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Order details' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles('admin', 'manager', 'supply_coordinator', 'store_staff')
+  @Roles('admin', 'manager', 'coordinator', 'store_staff')
   findOne(
     @Param('id', ParseIntPipe) id: number, // ParseIntPipe validate & convert
     @CurrentUser() user: AuthUser,
@@ -115,7 +115,7 @@ export class OrdersController {
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Status updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles('admin', 'manager', 'supply_coordinator') // store_staff không được update status
+  @Roles('admin', 'manager', 'coordinator') // store_staff không được update status
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,

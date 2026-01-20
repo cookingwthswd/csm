@@ -2,6 +2,15 @@ import { createClient } from '@/lib/supabase/client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * API Response wrapper from NestJS backend
+ */
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
+
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -25,7 +34,10 @@ export async function apiClient<T>(
     throw new Error(error.message || `API Error: ${response.status}`);
   }
 
-  return response.json();
+  const json: ApiResponse<T> = await response.json();
+
+  // Extract data from wrapped response
+  return json.data;
 }
 
 export const api = {

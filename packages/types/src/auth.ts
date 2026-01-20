@@ -15,9 +15,9 @@ import { z } from 'zod';
 export const UserRole = z.enum([
   'admin',
   'manager',
-  'supply_coordinator',
-  'kitchen_staff',
+  'ck_staff',
   'store_staff',
+  'coordinator',
 ]);
 export type UserRole = z.infer<typeof UserRole>;
 

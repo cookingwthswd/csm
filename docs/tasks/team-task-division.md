@@ -215,6 +215,7 @@ apps/web/src/lib/
 
 | File | Owner | Link |
 |------|-------|------|
+| Lead - Stores, Users & Auth | Lead | [fs0-lead-stores-users-auth.md](./fs0-lead-stores-users-auth.md) |
 | Orders & Status | FS1 | [fs1-orders-status.md](./fs1-orders-status.md) |
 | Production & Recipe | FS2 | [fs2-production-recipe.md](./fs2-production-recipe.md) |
 | Inventory & Alerts | FS3 | [fs3-inventory-alerts.md](./fs3-inventory-alerts.md) |

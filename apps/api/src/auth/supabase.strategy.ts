@@ -33,7 +33,6 @@ export interface JwtPayload {
 export interface AuthUser {
   id: string;
   email: string;
-  chainId: number; // Default: 1 (single chain for now)
   role: string;
   storeId: number | null;
 }
@@ -76,7 +75,6 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
     return {
       id: payload.sub,
       email: payload.email,
-      chainId: 1, // Default chain_id, có thể mở rộng sau
       role: payload.app_metadata.role,
       storeId: payload.app_metadata.store_id ?? null,
     };

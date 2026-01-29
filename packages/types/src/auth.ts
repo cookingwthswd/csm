@@ -28,7 +28,7 @@ export type UserRole = z.infer<typeof UserRole>;
 export const AuthUser = z.object({
   id: z.uuid(),      // Zod 4.x: z.uuid() instead of z.string().uuid()
   email: z.email(),  // Zod 4.x: z.email() instead of z.string().email()
-  chainId: z.number().int().positive(),
+  storeId: z.number().int().positive().nullable(),
   role: UserRole,
 });
 export type AuthUser = z.infer<typeof AuthUser>;
@@ -41,7 +41,7 @@ export const JwtPayload = z.object({
   sub: z.uuid(),
   email: z.email(),
   app_metadata: z.object({
-    chain_id: z.number(),
+    store_id: z.number().nullable(),
     role: UserRole,
   }),
   aud: z.string(),

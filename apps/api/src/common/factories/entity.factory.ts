@@ -30,8 +30,8 @@
 export interface EntityContext {
   /** User ID from JWT */
   userId: string;
-  /** Chain ID for multi-tenant isolation (optional) */
-  chainId?: number;
+  /** Store ID for data isolation (optional) */
+  storeId?: number | null;
   /** User role for permission checks */
   role?: string;
 }

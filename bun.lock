@@ -5,7 +5,7 @@
     "": {
       "name": "ckms",
       "devDependencies": {
-        "turbo": "^2.7.4",
+        "turbo": "^2.7.5",
       },
     },
     "apps/api": {

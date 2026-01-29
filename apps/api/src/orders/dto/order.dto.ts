@@ -62,11 +62,11 @@ export class CreateOrderItemDto {
   @IsPositive()
   quantity: number;
 
-  @ApiProperty({ description: 'Price of the item' })
-  @IsOptional()
-  @IsNumber({ maxDecimalPlaces: 2 })
-  @IsPositive()
-  unitPrice: number;  
+  // @ApiProperty({ description: 'Price of the item' })
+  // @IsOptional()
+  // @IsNumber({ maxDecimalPlaces: 2 })
+  // @IsPositive()
+  // unitPrice: number;  
 }
 
 /**
@@ -102,11 +102,56 @@ export class CreateOrderDto {
   @Type(() => CreateOrderItemDto) // Transform nested objects
   items: CreateOrderItemDto[];
 
-  @ApiProperty({ description: 'Total amount of the order' })
-  @IsNumber({ maxDecimalPlaces: 2 })
+  // @ApiProperty({ description: 'Total amount of the order' })
+  // @IsNumber({ maxDecimalPlaces: 2 })
+  // @IsPositive()
+  // @IsOptional()
+  // totalAmount: number; 
+
+  @ApiProperty({ description: 'Store ID', example: 1 })
+  @IsInt()
   @IsPositive()
+  storeId: number;
+}
+
+/**
+ * DTO để tạo update order
+ *
+ * VÍ DỤ REQUEST:
+ * POST /orders/:id
+ * {
+ *   "deliveryDate": "2026-01-20",
+ *   "notes": "Urgent order",
+ *   "items": [{ "itemId": 1, "quantity": 10 }]
+ * }
+ *
+ * NOTE: storeId được lấy từ user context (JWT token), không cần gửi trong request
+ */
+export class UpdateOrderDto {
+  @ApiProperty({
+    description: 'Delivery date',
+    example: '2026-01-20',
+  })
   @IsOptional()
-  totalAmount: number;  
+  @IsDateString()
+  deliveryDate?: string;
+
+  @ApiPropertyOptional({ description: 'Additional notes' })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiProperty({ description: 'Order items', type: [CreateOrderItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true }) // Validate từng item trong array
+  @Type(() => CreateOrderItemDto) // Transform nested objects
+  items: CreateOrderItemDto[];
+
+  // @ApiProperty({ description: 'Total amount of the order' })
+  // @IsNumber({ maxDecimalPlaces: 2 })
+  // @IsPositive()
+  // @IsOptional()
+  // totalAmount: number;  
 
   @ApiProperty({ description: 'Store ID', example: 1 })
   @IsInt()

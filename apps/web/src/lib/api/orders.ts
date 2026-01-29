@@ -1,5 +1,5 @@
 import { api } from './client';
-import type {
+import {
     OrderResponse,
     CreateOrderDto,
     UpdateOrderStatusDto,
@@ -61,4 +61,9 @@ export const orderApi = {
      */
     removeItem: (orderId: number, itemId: number) =>
         api.delete<{ success: boolean; message: string }>(`/orders/${orderId}/items/${itemId}`),
+
+    update: async (orderId: number, data: CreateOrderDto) => {
+        console.log(orderId, data)
+        await api.put<OrderResponse>(`/orders/${orderId}`, data)
+    }
 };

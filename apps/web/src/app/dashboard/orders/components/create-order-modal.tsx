@@ -27,7 +27,7 @@ export function AddOrderModal({
         enabled: isOpen,
     });
 
-    const { data: products } = useQuery<Product[]>({
+    const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
         queryKey: ["products"],
         queryFn: async () => {
             const res = await productsApi.getAll();
@@ -57,6 +57,7 @@ export function AddOrderModal({
 
         const product = getProductById(itemId);
         if (!product) return 0;
+        console.log(product)
 
         const price = product.currentPrice ??
             (product as any).price ??

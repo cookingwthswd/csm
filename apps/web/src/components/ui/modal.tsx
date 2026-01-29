@@ -34,7 +34,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed h-screen overflow-x-auto inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={(e) => e.target === overlayRef.current && onClose()}
     >
       <div className="w-full max-w-5xl rounded-lg bg-white p-6 shadow-xl">

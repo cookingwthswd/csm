@@ -19,7 +19,7 @@ import {
 import { CurrentUser, Roles, CheckStoreAccessGuard } from '../auth';
 import type { AuthUser } from '../auth';
 import { PaginationDto } from '../common';
-import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import { CreateOrderDto, UpdateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { UserRoleEnum } from '../users/dto/user.dto';
 
@@ -189,7 +189,9 @@ export class OrdersController {
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Status updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles('admin', 'manager', 'coordinator') // store_staff không được update status
+  @Roles(UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR) // store_staff không được update status
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,
@@ -197,4 +199,29 @@ export class OrdersController {
   ) {
     return this.ordersService.updateStatus(id, dto, user);
   }
+
+  /**
+ * PUT /orders/:id
+ * Update pending orders
+ */
+  @Put('/:id')
+  @ApiOperation({ summary: 'Update order' })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
+  @ApiResponse({ status: 200, description: 'Order updated' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.STORE_STAFF
+  )
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateOrderDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    console.log(dto)
+    return this.ordersService.update(id, dto, user);
+  }
 }
+
+

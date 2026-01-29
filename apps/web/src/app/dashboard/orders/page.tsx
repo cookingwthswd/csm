@@ -10,6 +10,7 @@ import type { OrderResponseWithPagination, CreateOrderDto, OrderStatus, OrderRes
 import { ORDER_STATUS, ORDER_STATUS_VALUES, statusColors } from "@repo/types"
 import { OrderDetailsModal } from "./components/order-details-modal";
 import { AddOrderModal } from "./components/create-order-modal";
+import { UpdateOrderModal } from "./components/update-order-model";
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
@@ -64,6 +65,17 @@ export default function OrdersPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: CreateOrderDto }) =>
+      orderApi.update(id, data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setEditingOrder(null);
+    },
+  });
+
+
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<OrderResponse | null>(null);
@@ -105,10 +117,10 @@ export default function OrdersPage() {
 
   const generatePageNumbers = () => {
     if (!paginationData) return [];
-    
+
     const { page, totalPages } = paginationData;
     const pages: (number | string)[] = [];
-    
+
     if (totalPages <= 7) {
       // Show all pages if total is 7 or less
       for (let i = 1; i <= totalPages; i++) {
@@ -117,24 +129,24 @@ export default function OrdersPage() {
     } else {
       // Always show first page
       pages.push(1);
-      
+
       if (page > 3) {
         pages.push('...');
       }
-      
+
       // Show pages around current page
       for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
         pages.push(i);
       }
-      
+
       if (page < totalPages - 2) {
         pages.push('...');
       }
-      
+
       // Always show last page
       pages.push(totalPages);
     }
-    
+
     return pages;
   };
 
@@ -202,7 +214,7 @@ export default function OrdersPage() {
             {orders && !isLoading && orders.map((order, i) => (
               <tr key={order.id} className="border-b hover:bg-gray-50 text-black">
                 <td className="p-3 font-medium">
-                  {((paginationData?.page || 1) - 1) * (paginationData?.limit || 10) + i + 1}
+                  {order.id}
                 </td>
                 <td className="p-3">
                   {order.storeName || `Store ${order.storeId}`}
@@ -239,6 +251,17 @@ export default function OrdersPage() {
                         </option>
                       ))}
                     </select>
+                    {order.status === ORDER_STATUS.PENDING && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setEditingOrder(order);
+                        }}
+                      >
+                        Edit
+                      </Button>
+                    )}
+
                     {order.status === ORDER_STATUS.PENDING && (
                       <button
                         onClick={() => setApproveId(order.id)}
@@ -302,13 +325,12 @@ export default function OrdersPage() {
                 key={index}
                 onClick={() => typeof page === 'number' && handlePageChange(page)}
                 disabled={page === '...' || page === paginationData.page}
-                className={`rounded border px-3 py-1 text-sm ${
-                  page === paginationData.page
-                    ? 'bg-blue-600 text-white'
-                    : page === '...'
+                className={`rounded border px-3 py-1 text-sm ${page === paginationData.page
+                  ? 'bg-blue-600 text-white'
+                  : page === '...'
                     ? 'cursor-default border-transparent'
                     : 'text-gray-700 hover:bg-gray-100'
-                } disabled:cursor-not-allowed`}
+                  } disabled:cursor-not-allowed`}
               >
                 {page}
               </button>
@@ -336,13 +358,6 @@ export default function OrdersPage() {
       )}
 
       {/* Modals */}
-      <OrderFormModal
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        onSubmit={handleFormSubmit}
-        editingOrder={editingOrder}
-        isLoading={createMutation.isPending}
-      />
       <ConfirmationModal
         isOpen={deleteId !== null}
         onClose={() => setDeleteId(null)}
@@ -374,6 +389,18 @@ export default function OrdersPage() {
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleFormSubmit}
+      />
+      <UpdateOrderModal
+        isOpen={!!editingOrder}
+        order={editingOrder}
+        onClose={() => {
+          setEditingOrder(null);
+          setIsFormOpen(false);
+        }}
+        onSubmit={(id, data) =>
+          updateMutation.mutate({ id, data })
+        }
+        isLoading={updateMutation.isPending}
       />
     </div>
   );

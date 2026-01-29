@@ -12,7 +12,12 @@ import {
 } from '@supabase/supabase-js';
 import { ORDER_STATUS_VALUES, type Database } from '@repo/types';
 import { PaginationDto } from '../common';
-import { CreateOrderDto, ORDER_STATUSES, UpdateOrderStatusDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  ORDER_STATUSES,
+  UpdateOrderDto,
+  UpdateOrderStatusDto,
+} from './dto/order.dto';
 import { UserRoleEnum } from 'src/users/dto/user.dto';
 import { AuthUser } from 'src/auth';
 
@@ -145,11 +150,10 @@ export class OrdersService {
       throw new NotFoundException(`Order #${id} not found`);
     }
 
-    console.log(data)
+    console.log(data);
 
     return this.transformOrder(data as OrderWithRelations);
   }
-
 
   /**
    * Tạo order mới
@@ -160,17 +164,17 @@ export class OrdersService {
    * 3. Insert order items
    * 4. Return complete order
    */
-  async create(
-    dto: CreateOrderDto,
-    user: AuthUser,
-  ) {
-    console.log(dto)
+  async create(dto: CreateOrderDto, user: AuthUser) {
+    console.log(dto);
     const orderCode = `ORD-${new Date()
       .toISOString()
       .slice(0, 10)
       .replace(/-/g, '')}-${Date.now().toString().slice(-5)}`;
 
-    if ((user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF && !user.storeId) {
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      !user.storeId
+    ) {
       throw new InternalServerErrorException(
         'Failed to create order. No Store ID found',
       );
@@ -191,7 +195,8 @@ export class OrdersService {
       .single();
 
     if (orderError) this.handleError(orderError, 'Failed to create order');
-    if (!order) throw new InternalServerErrorException('Failed to create order');
+    if (!order)
+      throw new InternalServerErrorException('Failed to create order');
 
     // 2️⃣ Fetch current prices
     const itemIds = dto.items.map((i) => i.itemId);
@@ -254,6 +259,122 @@ export class OrdersService {
     return this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
   }
 
+  /**
+   * Update order
+   *
+   * FLOW:
+   * 1. Fetch order & validate status
+   * 2. Only pending orders can be edited
+   */
+  async update(id: number, dto: UpdateOrderDto, user: AuthUser) {
+    console.log(dto)
+    const { data: existingOrder, error: fetchError } = await this.supabase
+      .from('orders')
+      .select('id, status, store_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existingOrder) {
+      throw new NotFoundException(`Order #${id} not found`);
+    }
+
+    if (existingOrder.status !== 'pending') {
+      throw new ForbiddenException('Only pending orders can be edited');
+    }
+
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      user.storeId !== existingOrder.store_id
+    ) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // 1️⃣ Update order basic info
+    const { error: orderUpdateError } = await this.supabase
+      .from('orders')
+      .update({
+        store_id: dto.storeId ?? existingOrder.store_id,
+        notes: dto.notes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (orderUpdateError) {
+      this.handleError(orderUpdateError, 'Failed to update order');
+    }
+
+    // 2️⃣ Fetch current prices
+    const itemIds = dto.items.map((i) => i.itemId);
+
+    const { data: dbItems, error: itemsFetchError } = await this.supabase
+      .from('items')
+      .select('id, current_price')
+      .in('id', itemIds);
+
+    if (itemsFetchError || !dbItems) {
+      this.handleError(itemsFetchError, 'Failed to fetch item prices');
+    }
+
+    const priceMap = new Map(
+      dbItems.map((item) => [item.id, item.current_price]),
+    );
+
+    // 3️⃣ Rebuild order items + total
+    let totalAmount = 0;
+
+    const orderItems = dto.items.map((item) => {
+      const unitPrice = priceMap.get(item.itemId);
+
+      if (unitPrice == null) {
+        throw new InternalServerErrorException(
+          `Price not found for item ${item.itemId}`,
+        );
+      }
+
+      const lineTotal = unitPrice * item.quantity;
+      totalAmount += lineTotal;
+
+      return {
+        order_id: id,
+        item_id: item.itemId,
+        notes: item.notes,
+        quantity_ordered: item.quantity,
+        unit_price: unitPrice,
+      };
+    });
+
+    // 4️⃣ Delete old items
+    const { error: deleteError } = await this.supabase
+      .from('order_items')
+      .delete()
+      .eq('order_id', id);
+
+    if (deleteError) {
+      this.handleError(deleteError, 'Failed to remove old order items');
+    }
+
+    // 5️⃣ Insert new items
+    const { error: insertError } = await this.supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (insertError) {
+      this.handleError(insertError, 'Failed to insert updated order items');
+    }
+
+    // 6️⃣ Update total amount
+    const { error: totalUpdateError } = await this.supabase
+      .from('orders')
+      .update({ total_amount: totalAmount })
+      .eq('id', id);
+
+    if (totalUpdateError) {
+      this.handleError(totalUpdateError, 'Failed to update order total');
+    }
+
+    // 7️⃣ Return updated order
+    return this.findOne(id, user.storeId, user.role as UserRoleEnum);
+  }
 
   /**
    * Update order status
@@ -273,7 +394,6 @@ export class OrdersService {
       .eq('id', id)
       .select()
       .single();
-
 
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
@@ -320,12 +440,12 @@ export class OrdersService {
         quantity: item.quantity_ordered,
         unitPrice: item.unit_price,
         type: item.items?.type,
-        notes: item.notes
+        notes: item.notes,
       })),
       createdAt: order.created_at,
       updatedAt: order.updated_at,
       createdBy: order.users.full_name || '',
-      creatorRole: order.users.role
+      creatorRole: order.users.role,
     };
   }
 }
@@ -339,7 +459,7 @@ export class OrdersService {
  */
 type OrderItemWithRelations =
   Database['public']['Tables']['order_items']['Row'] & {
-    items?: { name: string, type: string };
+    items?: { name: string; type: string };
   };
 
 /**
@@ -348,5 +468,5 @@ type OrderItemWithRelations =
 type OrderWithRelations = Database['public']['Tables']['orders']['Row'] & {
   order_items?: OrderItemWithRelations[];
   stores?: { name: string };
-  users: { full_name: string, role: string };
+  users: { full_name: string; role: string };
 };

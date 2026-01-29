@@ -1,8 +1,20 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient, PostgrestError } from '@supabase/supabase-js';
-import { PaginationDto } from '../common/dto/pagination.dto';
-import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import {
+  createClient,
+  SupabaseClient,
+  PostgrestError,
+} from '@supabase/supabase-js';
+import { ORDER_STATUS_VALUES, type Database } from '@repo/types';
+import { PaginationDto } from '../common';
+import { CreateOrderDto, ORDER_STATUSES, UpdateOrderStatusDto } from './dto/order.dto';
+import { UserRoleEnum } from 'src/users/dto/user.dto';
+import { AuthUser } from 'src/auth';
 
 /**
  * Orders Service - Business Logic Layer
@@ -19,12 +31,12 @@ import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
  */
 @Injectable()
 export class OrdersService {
-  private supabase: SupabaseClient;
+  private supabase: SupabaseClient<Database>;
 
   constructor(private configService: ConfigService) {
     // Khởi tạo Supabase client với service role key
     // Service role key có full access, bypass RLS
-    this.supabase = createClient(
+    this.supabase = createClient<Database>(
       this.configService.getOrThrow('SUPABASE_URL'),
       this.configService.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
     );
@@ -46,39 +58,46 @@ export class OrdersService {
   /**
    * Lấy danh sách orders với pagination
    *
-   * @param chainId - Chain ID từ JWT (data isolation)
+   * @param storeId - Store ID từ user context (data isolation)
    * @param pagination - { page, limit }
    * @returns { data: Order[], meta: { total, page, limit, totalPages } }
    */
-  async findAll(chainId: number, pagination: PaginationDto) {
+  async findAll(pagination: PaginationDto, storeId?: number) {
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
 
-    // Query với count để biết tổng số records
-    const { data, error, count } = await this.supabase
+    let query = this.supabase
       .from('orders')
       .select(
         `
-        *,
+    *,
         order_items (
           id,
-          product_id,
-          quantity,
+          item_id,
+          quantity_ordered,
           unit_price,
-          products ( name )
+          order_id,
+          notes,
+          items ( name, type )
         ),
-        stores ( name )
-      `,
-        { count: 'exact' }, // Trả về total count
+        stores ( name ),
+        users:users!created_by ( full_name, role )
+  `,
+        { count: 'exact' },
       )
-      .eq('chain_id', chainId) // Filter theo chain (data isolation)
-      .order('created_at', { ascending: false }) // Mới nhất trước
-      .range(offset, offset + limit - 1); // Pagination
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (storeId !== undefined) {
+      query = query.eq('store_id', storeId);
+    }
+    // Query với count để biết tổng số records
+    const { data, error, count } = await query;
 
     if (error) this.handleError(error, 'Failed to fetch orders');
 
     return {
-      data: this.transformOrders(data || []),
+      data: this.transformOrders(data as OrderWithRelations[]),
       meta: {
         total: count || 0,
         page,
@@ -91,78 +110,150 @@ export class OrdersService {
   /**
    * Lấy chi tiết 1 order
    */
-  async findOne(id: number, chainId: number) {
-    const { data, error } = await this.supabase
+  async findOne(id: number, storeId: number | null, userRole: UserRoleEnum) {
+    let query = this.supabase
       .from('orders')
       .select(
         `
         *,
         order_items (
           id,
-          product_id,
-          quantity,
+          item_id,
+          quantity_ordered,
           unit_price,
-          products ( name )
+          order_id,
+          notes,
+          items ( name, type )
         ),
-        stores ( name )
+        stores ( name ),
+        users:users!created_by ( full_name, role )
       `,
       )
-      .eq('id', id)
-      .eq('chain_id', chainId) // Đảm bảo user chỉ xem được order của chain mình
-      .single();
+      .eq('id', id);
+
+    // 🔐 Staff can only access their own store
+    if (userRole === UserRoleEnum.STORE_STAFF) {
+      if (!storeId) {
+        throw new ForbiddenException('Store access required');
+      }
+      query = query.eq('store_id', storeId);
+    }
+
+    const { data, error } = await query.single();
 
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
     }
 
-    return this.transformOrder(data);
+    console.log(data)
+
+    return this.transformOrder(data as OrderWithRelations);
   }
+
 
   /**
    * Tạo order mới
    *
    * FLOW:
-   * 1. Generate order number
+   * 1. Generate order code
    * 2. Insert order record
    * 3. Insert order items
    * 4. Return complete order
    */
-  async create(dto: CreateOrderDto, user: { id: string; chainId: number }) {
-    // Generate unique order number: ORD-YYYYMMDD-XXXXX
-    const orderNumber = `ORD-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-5)}`;
+  async create(
+    dto: CreateOrderDto,
+    user: AuthUser,
+  ) {
+    console.log(dto)
+    const orderCode = `ORD-${new Date()
+      .toISOString()
+      .slice(0, 10)
+      .replace(/-/g, '')}-${Date.now().toString().slice(-5)}`;
 
-    // Insert order
+    if ((user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF && !user.storeId) {
+      throw new InternalServerErrorException(
+        'Failed to create order. No Store ID found',
+      );
+    }
+
+    // 1️⃣ Create order (temporary total_amount = 0)
     const { data: order, error: orderError } = await this.supabase
       .from('orders')
       .insert({
-        chain_id: user.chainId,
         store_id: dto.storeId,
-        order_number: orderNumber,
-        status: 'draft',
-        requested_date: dto.requestedDate,
+        order_code: orderCode,
+        status: 'pending',
         notes: dto.notes,
         created_by: user.id,
+        total_amount: 0,
       })
       .select()
       .single();
 
     if (orderError) this.handleError(orderError, 'Failed to create order');
+    if (!order) throw new InternalServerErrorException('Failed to create order');
 
-    // Insert order items
-    const items = dto.items.map((item) => ({
-      chain_id: user.chainId,
-      order_id: order.id,
-      product_id: item.productId,
-      quantity: item.quantity,
-    }));
+    // 2️⃣ Fetch current prices
+    const itemIds = dto.items.map((i) => i.itemId);
 
-    const { error: itemsError } = await this.supabase.from('order_items').insert(items);
+    const { data: dbItems, error: itemsFetchError } = await this.supabase
+      .from('items')
+      .select('id, current_price')
+      .in('id', itemIds);
 
-    if (itemsError) this.handleError(itemsError, 'Failed to create order items');
+    if (itemsFetchError || !dbItems) {
+      this.handleError(itemsFetchError, 'Failed to fetch item prices');
+    }
 
-    // Return complete order with items
-    return this.findOne(order.id, user.chainId);
+    const priceMap = new Map(
+      dbItems.map((item) => [item.id, item.current_price]),
+    );
+
+    // 3️⃣ Build order items + calculate total
+    let totalAmount = 0;
+
+    const orderItems = dto.items.map((item) => {
+      const unitPrice = priceMap.get(item.itemId);
+
+      if (unitPrice == null) {
+        throw new InternalServerErrorException(
+          `Price not found for item ${item.itemId}`,
+        );
+      }
+
+      const lineTotal = unitPrice * item.quantity;
+      totalAmount += lineTotal;
+
+      return {
+        order_id: order.id,
+        item_id: item.itemId,
+        notes: item.notes,
+        quantity_ordered: item.quantity,
+        unit_price: unitPrice,
+      };
+    });
+
+    // 4️⃣ Insert order items
+    const { error: itemsError } = await this.supabase
+      .from('order_items')
+      .insert(orderItems);
+
+    if (itemsError)
+      this.handleError(itemsError, 'Failed to create order items');
+
+    // 5️⃣ Update order total
+    const { error: totalUpdateError } = await this.supabase
+      .from('orders')
+      .update({ total_amount: totalAmount })
+      .eq('id', order.id);
+
+    if (totalUpdateError)
+      this.handleError(totalUpdateError, 'Failed to update order total');
+
+    // 6️⃣ Return full order
+    return this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
   }
+
 
   /**
    * Update order status
@@ -171,7 +262,7 @@ export class OrdersService {
    * draft → submitted → confirmed → in_production → ready → in_delivery → delivered
    *                                                                    ↘ cancelled
    */
-  async updateStatus(id: number, dto: UpdateOrderStatusDto, chainId: number) {
+  async updateStatus(id: number, dto: UpdateOrderStatusDto, user: AuthUser) {
     const { data, error } = await this.supabase
       .from('orders')
       .update({
@@ -180,15 +271,15 @@ export class OrdersService {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('chain_id', chainId)
       .select()
       .single();
+
 
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
     }
 
-    return this.findOne(id, chainId);
+    return this.findOne(id, null, user.role as UserRoleEnum);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -199,7 +290,7 @@ export class OrdersService {
    * Transform array of orders
    * DB trả về snake_case, API return camelCase
    */
-  private transformOrders(orders: OrderRow[]) {
+  private transformOrders(orders: OrderWithRelations[]) {
     return orders.map((order) => this.transformOrder(order));
   }
 
@@ -207,66 +298,55 @@ export class OrdersService {
    * Transform single order
    *
    * INPUT (from DB):
-   * { id: 1, chain_id: 1, store_id: 1, order_number: 'ORD-001', ... }
+   * { id: 1, store_id: 1, order_code: 'ORD-001', ... }
    *
    * OUTPUT (to API):
-   * { id: 1, chainId: 1, storeId: 1, orderNumber: 'ORD-001', ... }
+   * { id: 1, storeId: 1, orderCode: 'ORD-001', ... }
    */
-  private transformOrder(order: OrderRow) {
+  private transformOrder(order: OrderWithRelations) {
     return {
       id: order.id,
-      chainId: order.chain_id,
       storeId: order.store_id,
       storeName: order.stores?.name,
-      orderNumber: order.order_number,
+      orderCode: order.order_code,
       status: order.status,
-      requestedDate: order.requested_date,
+      deliveryDate: order.delivery_date,
       totalAmount: order.total_amount,
       notes: order.notes,
       items: (order.order_items || []).map((item) => ({
         id: item.id,
-        productId: item.product_id,
-        productName: item.products?.name,
-        quantity: item.quantity,
+        itemId: item.item_id,
+        itemName: item.items?.name,
+        quantity: item.quantity_ordered,
         unitPrice: item.unit_price,
+        type: item.items?.type,
+        notes: item.notes
       })),
       createdAt: order.created_at,
       updatedAt: order.updated_at,
+      createdBy: order.users.full_name || '',
+      creatorRole: order.users.role
     };
   }
 }
 
 // ═══════════════════════════════════════════════════════════
-// TYPE DEFINITIONS - DB Row Types
+// TYPE DEFINITIONS - DB Row Types with Relations
 // ═══════════════════════════════════════════════════════════
 
 /**
- * Type cho order row từ Supabase
- * snake_case matching DB column names
- *
- * TIP cho BE team:
- * - Có thể generate types tự động từ DB: npx supabase gen types typescript
- * - Hoặc define manual như này cho flexibility
+ * Type cho order item row từ Supabase với relations
  */
-interface OrderItemRow {
-  id: number;
-  product_id: number;
-  quantity: number;
-  unit_price: number | null;
-  products?: { name: string };
-}
+type OrderItemWithRelations =
+  Database['public']['Tables']['order_items']['Row'] & {
+    items?: { name: string, type: string };
+  };
 
-interface OrderRow {
-  id: number;
-  chain_id: number;
-  store_id: number;
-  order_number: string;
-  status: string;
-  requested_date: string;
-  total_amount: number | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  order_items?: OrderItemRow[];
+/**
+ * Type cho order row từ Supabase với relations
+ */
+type OrderWithRelations = Database['public']['Tables']['orders']['Row'] & {
+  order_items?: OrderItemWithRelations[];
   stores?: { name: string };
-}
+  users: { full_name: string, role: string };
+};

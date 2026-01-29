@@ -17,6 +17,14 @@ export const VALID_ROLES = [
 ] as const;
 export type UserRole = (typeof VALID_ROLES)[number];
 
+export enum UserRoleEnum {
+  ADMIN = 'admin',
+  MANAGER = 'manager',
+  CK_STAFF = 'ck_staff',
+  STORE_STAFF = 'store_staff',
+  COORDINATOR = 'coordinator',
+}
+
 /**
  * Create User DTO
  * Used by admin to create new users

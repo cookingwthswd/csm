@@ -21,6 +21,7 @@ export const Product = z.object({
   description: z.string().nullable(),
   imageUrl: z.string().nullable(),
   isActive: z.boolean(),
+  currentPrice: z.number()
 });
 export type Product = z.infer<typeof Product>;
 

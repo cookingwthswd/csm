@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { CommonModule } from './common';
 import { AuthModule } from './auth/auth.module';
 import { OrdersModule } from './orders/orders.module';
+import { ReportsModule } from './reports/reports.module';
 import { CategoriesModule } from './categories/categories.module';
 import { StoresModule } from './stores/stores.module';
 import { ProductsModule } from './products/products.module';
@@ -38,6 +39,7 @@ import { UsersModule } from './users/users.module';
     StoresModule, // Franchise stores & central kitchen
     ProductsModule, // Products (items table)
     OrdersModule, // Template module cho FS team reference
+    ReportsModule, // FS5: Reports & Dashboard
   ],
   controllers: [AppController],
   providers: [AppService],

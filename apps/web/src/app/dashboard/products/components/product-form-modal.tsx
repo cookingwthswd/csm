@@ -52,8 +52,8 @@ export function ProductFormModal({
       if (editingProduct) {
         setFormData({
           name: editingProduct.name,
-          sku: editingProduct.sku,
-          categoryId: editingProduct.categoryId,
+          sku: editingProduct.sku ?? '',
+          categoryId: editingProduct.categoryId ?? categories[0]?.id ?? 0,
           unit: editingProduct.unit as ItemUnit,
           type: editingProduct.type as ItemType,
           description: editingProduct.description || '',

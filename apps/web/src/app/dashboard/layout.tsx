@@ -83,6 +83,7 @@ export default function DashboardLayout({
           <NavLink href="/dashboard/stores">Stores</NavLink>
           <NavLink href="/dashboard/products">Products</NavLink>
           <NavLink href="/dashboard/orders">Orders</NavLink>
+          <NavLink href="/dashboard/reports/orders">Reports</NavLink>
         </nav>
 
         <div className="absolute bottom-4 left-4 right-4 w-56">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import Link from 'next/link';
 
@@ -71,31 +71,35 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-64 border-r bg-gray-50">
+      <aside className="flex w-64 flex-col border-r bg-gray-50">
         <div className="p-4">
           <h1 className="text-xl font-bold text-gray-800">CKMS</h1>
           <p className="text-sm text-gray-500">Central Kitchen Management</p>
         </div>
 
-        <nav className="mt-4">
+        <nav className="mt-4 flex-1">
           <NavLink href="/dashboard">Dashboard</NavLink>
+          <NavLink href="/dashboard/orders">Orders</NavLink>
+          <NavLink href="/dashboard/products">Products</NavLink>
           <NavLink href="/dashboard/categories">Categories</NavLink>
           <NavLink href="/dashboard/stores">Stores</NavLink>
-          <NavLink href="/dashboard/products">Products</NavLink>
-          <NavLink href="/dashboard/orders">Orders</NavLink>
+          <NavLink href="/dashboard/users">Users</NavLink>
         </nav>
 
-        <div className="absolute bottom-4 left-4 right-4 w-56">
-          <div className="border-t pt-4">
-            <p className="truncate text-sm text-gray-600">{user.email}</p>
-            <button
-              onClick={handleSignOut}
-              disabled={signingOut}
-              className="mt-2 text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
-            >
-              {signingOut ? 'Signing out...' : 'Sign Out'}
-            </button>
-          </div>
+        <div className="border-t p-4">
+          <Link
+            href="/dashboard/profile"
+            className="block truncate text-sm text-gray-600 hover:text-blue-600"
+          >
+            {user.email}
+          </Link>
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="mt-2 text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+          >
+            {signingOut ? 'Signing out...' : 'Sign Out'}
+          </button>
         </div>
       </aside>
 
@@ -106,10 +110,19 @@ export default function DashboardLayout({
 }
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isActive = href === '/dashboard'
+    ? pathname === '/dashboard'
+    : pathname.startsWith(href);
+
   return (
     <Link
       href={href}
-      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+      className={`block px-4 py-2 ${
+        isActive
+          ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-700'
+          : 'text-gray-700 hover:bg-gray-100'
+      }`}
     >
       {children}
     </Link>

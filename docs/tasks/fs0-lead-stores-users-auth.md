@@ -38,35 +38,16 @@
 - `apps/web/src/lib/stores/auth.store.ts` - Zustand auth state singleton
 - `apps/web/src/lib/query-client.ts` - React Query singleton
 
+### Frontend - Auth & User Management ✅ (2026-02-02)
+- `apps/web/src/components/auth/auth-guard.tsx` - Auth guard component
+- `apps/web/src/components/auth/role-guard.tsx` - Role-based access guard
+- `apps/web/src/app/(auth)/forgot-password/page.tsx` - Forgot password page
+- `apps/web/src/app/(auth)/reset-password/page.tsx` - Reset password with strength indicator
+- `apps/web/src/app/(dashboard)/dashboard/profile/page.tsx` - User profile page
+- Dashboard layout updates: Users nav link, profile link, sidebar positioning fix, active nav states
+- Fixed pre-existing TypeScript errors in orders/products modules
+
 ## In Progress 🔄
-
-### Frontend - Auth & User Management
-
-```
-apps/web/src/features/auth/
-├── pages/
-│   ├── login.tsx
-│   ├── register.tsx
-│   └── forgot-password.tsx
-├── components/
-│   ├── login-form.tsx
-│   ├── auth-guard.tsx
-│   └── role-guard.tsx
-└── hooks/
-    └── use-auth.ts
-
-apps/web/src/features/users/
-├── pages/
-│   ├── user-list.tsx
-│   ├── user-detail.tsx
-│   └── profile.tsx
-├── components/
-│   ├── user-table.tsx
-│   ├── user-form.tsx
-│   └── role-badge.tsx
-└── hooks/
-    └── use-users.ts
-```
 
 ### Frontend - Store & Product Management
 
@@ -128,8 +109,8 @@ CREATE TABLE user_profiles (
 | Week | Backend | Frontend |
 |------|---------|----------|
 | 1 ✅ | Stores, Products, Categories, Auth | - |
-| 2 🔄 | Users CRUD | Login, Profile |
-| 3 | - | User management, Store settings |
+| 2 ✅ | Users CRUD | Login, Profile, Auth Guards |
+| 3 🔄 | - | User management, Store settings |
 | 4 | Review, Support | Product catalog, Polish |
 
 ## Integration Points

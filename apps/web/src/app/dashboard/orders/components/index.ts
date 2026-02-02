@@ -1,2 +1,2 @@
 export { OrderFormModal } from "./order-form-modal";
-export { DeleteModal } from "./confirmation-modal";
+export { ConfirmationModal } from "./confirmation-modal";

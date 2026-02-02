@@ -52,11 +52,11 @@ export function ProductFormModal({
       if (editingProduct) {
         setFormData({
           name: editingProduct.name,
-          sku: editingProduct.sku,
-          categoryId: editingProduct.categoryId,
+          sku: editingProduct.sku ?? undefined,
+          categoryId: editingProduct.categoryId ?? undefined,
           unit: editingProduct.unit as ItemUnit,
           type: editingProduct.type as ItemType,
-          description: editingProduct.description || '',
+          description: editingProduct.description ?? '',
         });
       } else {
         setFormData({

@@ -79,7 +79,7 @@ export function OrderFormModal({
         formData.items.length > 0
           ? formData.items
           : [
-            { productId: 1, quantity: 1 }, // Default item
+            { itemId: 1, quantity: 1 }, // Default item
           ],
     };
 

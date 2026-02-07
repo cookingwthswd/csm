@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -53,9 +54,7 @@ export class DeliveriesService {
           quantity_shipped,
           note,
           batches ( batch_code, expiry_date ),
-          order_items (
-            items ( name )
-          )
+          order_items ( items ( name ) )
         )
       `,
       )
@@ -71,7 +70,7 @@ export class DeliveriesService {
       user.storeId !== data.orders.store_id
     ) {
       throw new ForbiddenException(
-        `Store staffs are only allowed to view the shipment list in their store`,
+        `You are not allowed to access Shipment #${id}`,
       );
     }
 
@@ -79,6 +78,11 @@ export class DeliveriesService {
   }
 
   async create(dto: CreateShipmentDto, user: AuthUser) {
+    if (![UserRoleEnum.ADMIN, UserRoleEnum.COORDINATOR].includes(user.role as UserRoleEnum))
+    {
+      throw new ForbiddenException();
+    }
+
     const { data: order } = await this.supabase
       .from('orders')
       .select('id, status, store_id')
@@ -134,7 +138,11 @@ export class DeliveriesService {
       .eq('id', dto.batchId)
       .single();
 
-    if (!batch || batch.current_quantity < dto.quantityShipped) {
+    if (!batch) {
+      throw new NotFoundException('Batch not found');
+    }
+
+    if (batch.current_quantity < dto.quantityShipped) {
       throw new BadRequestException('Insufficient batch stock');
     }
 
@@ -180,7 +188,7 @@ export class DeliveriesService {
       .eq('id', id)
       .single();
 
-    if (!shipment) throw new NotFoundException();
+    if (!shipment) throw new NotFoundException('Shipment not found');
 
     if (shipment.status === 'delivered') {
       throw new BadRequestException('Shipment already delivered');

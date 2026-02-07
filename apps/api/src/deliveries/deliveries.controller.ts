@@ -42,7 +42,6 @@ export class DeliveriesController {
   @Get()
   @ApiOperation({ summary: 'List shipments' })
   @ApiResponse({ status: 200, description: 'List of shipments' })
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.COORDINATOR, UserRoleEnum.STORE_STAFF)
   findAll() {
     return this.service.findAll();
   }
@@ -55,7 +54,6 @@ export class DeliveriesController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Shipment details' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.COORDINATOR, UserRoleEnum.STORE_STAFF)
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
@@ -70,6 +68,7 @@ export class DeliveriesController {
   @ApiOperation({ summary: 'Create shipment from order' })
   @ApiResponse({ status: 201, description: 'Shipment created' })
   @ApiResponse({ status: 400, description: 'Validation failed' })
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR)
   create(@Body() dto: CreateShipmentDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user);
   }
@@ -83,7 +82,7 @@ export class DeliveriesController {
   @ApiResponse({ status: 200, description: 'Shipment status updated' })
   @ApiResponse({ status: 400, description: 'Invalid status transition' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.COORDINATOR, UserRoleEnum.STORE_STAFF)
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR)
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateShipmentStatusDto,
@@ -113,7 +112,7 @@ export class DeliveriesController {
   @ApiResponse({ status: 201, description: 'Shipment item added' })
   @ApiResponse({ status: 400, description: 'Invalid batch or quantity' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @Roles(UserRoleEnum.COORDINATOR)
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR)
   addItem(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddShipmentItemDto,

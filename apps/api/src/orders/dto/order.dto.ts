@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsArray,
@@ -66,7 +67,7 @@ export class CreateOrderItemDto {
   // @IsOptional()
   // @IsNumber({ maxDecimalPlaces: 2 })
   // @IsPositive()
-  // unitPrice: number;  
+  // unitPrice: number;
 }
 
 /**
@@ -106,7 +107,7 @@ export class CreateOrderDto {
   // @IsNumber({ maxDecimalPlaces: 2 })
   // @IsPositive()
   // @IsOptional()
-  // totalAmount: number; 
+  // totalAmount: number;
 
   @ApiProperty({ description: 'Store ID', example: 1 })
   @IsInt()
@@ -151,7 +152,7 @@ export class UpdateOrderDto {
   // @IsNumber({ maxDecimalPlaces: 2 })
   // @IsPositive()
   // @IsOptional()
-  // totalAmount: number;  
+  // totalAmount: number;
 
   @ApiProperty({ description: 'Store ID', example: 1 })
   @IsInt()

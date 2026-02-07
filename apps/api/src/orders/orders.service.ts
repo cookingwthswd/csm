@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   ForbiddenException,
   Injectable,
@@ -267,7 +268,7 @@ export class OrdersService {
    * 2. Only pending orders can be edited
    */
   async update(id: number, dto: UpdateOrderDto, user: AuthUser) {
-    console.log(dto)
+    console.log(dto);
     const { data: existingOrder, error: fetchError } = await this.supabase
       .from('orders')
       .select('id, status, store_id')

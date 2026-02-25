@@ -1,123 +1,89 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { shipmentsApi } from "@/lib/api/shipments";
-import type { CreateShipmentDto } from "@repo/types";
+import { AlertCircle } from "lucide-react";
 
-interface CreateShipmentModal {
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess?: () => void;
-}
+export default function CreateShipmentModal({ isOpen, onClose, onSuccess, existingShipments }: any) {
+  const [orderId, setOrderId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export default function CreateShipmentModal({
-  isOpen,
-  onClose,
-  onSuccess,
-}: CreateShipmentModal) {
-  const [orderId, setOrderId] = useState<number | null>(
-    null
-  );
-  const [isLoading, setIsLoading] =
-    useState(false);
-
-  const handleSubmit = async (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!orderId) return;
+
+    const isDuplicate = existingShipments?.some(
+      (s: any) => Number(s.order_id) === Number(orderId)
+    );
+
+    if (isDuplicate) {
+      setError(`Đơn hàng ORD-${orderId} đã có vận đơn trong hệ thống.`);
+      return;
+    }
 
     try {
       setIsLoading(true);
+      setError(null);
+      
+      await shipmentsApi.create({ orderId });
 
-      const payload: CreateShipmentDto = {
-        orderId,
-      };
-
-      await shipmentsApi.create(payload);
-
+      alert("Tạo vận đơn thành công!");
       onSuccess?.();
-    } catch (error) {
-      console.error(
-        "Create shipment failed:",
-        error
-      );
+      onClose();
+    } catch (err: any) {
+      const msg = err.message || "Không thể tạo vận đơn.";
+      
+      if (msg.includes("403") || msg.includes("Forbidden")) {
+        setError("Bạn không có quyền thực hiện chức năng này.");
+      } else if (msg.includes("already exists") || msg.includes("duplicate")) {
+        setError(`Lỗi: Order ID ${orderId} đã được tạo vận đơn trước đó.`);
+      } else if (msg.includes("processing")) {
+        setError("Lỗi: Chỉ các đơn hàng đang ở trạng thái 'Processing' mới được phép tạo vận đơn.");
+      } else {
+        setError(msg || "Đã có lỗi xảy ra, vui lòng thử lại.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      setOrderId(null);
-    }
-  }, [isOpen]);
+  useEffect(() => { if (isOpen) { setOrderId(null); setError(null); } }, [isOpen]);
 
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Create Shipment"
-    >
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-6"
-      >
-        {/* Shipment Info */}
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-gray-700">
-              Order ID{" "}
-              <span className="text-red-500">*</span>
-            </label>
-
-            <input
-              type="number"
-              min={1}
-              value={orderId ?? ""}
-              onChange={(e) =>
-                setOrderId(
-                  Number(e.target.value)
-                )
-              }
-              placeholder="Enter Order ID"
-              className="h-12 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-gray-900 shadow-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              required
-            />
+    <Modal isOpen={isOpen} onClose={onClose} title="Create New Shipment">
+      <form onSubmit={handleSubmit} className="space-y-4 p-4">
+        {error && (
+          <div className="flex items-center gap-2 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+            <AlertCircle size={16} />
+            <span>{error}</span>
           </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Order ID *</label>
+          <input
+            type="number"
+            value={orderId ?? ""}
+            onChange={(e) => setOrderId(Number(e.target.value))}
+            placeholder="Ví dụ: 1, 2, 3..."
+            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            required
+          />
         </div>
 
-        {/* Info Box */}
-        <div className="rounded-lg border-2 border-blue-200 bg-blue-50 p-4">
-          <p className="text-sm text-blue-700">
-            A shipment will be created for the
-            selected order. Shipment code will be
-            generated automatically.
+        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+          <p className="text-xs text-blue-600 font-medium">
+            Hệ thống sẽ tự động kiểm tra tính hợp lệ của đơn hàng trước khi tạo.
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col-reverse gap-3 border-t pt-6 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onClose}
-            className="w-full sm:w-auto"
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            loading={isLoading}
-            disabled={!orderId}
-            className="w-full sm:w-auto"
-          >
-            {isLoading
-              ? "Creating..."
-              : "Create Shipment"}
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <Button type="button" variant="secondary" onClick={onClose}>Hủy</Button>
+          <Button type="submit" loading={isLoading} disabled={!orderId} className="bg-blue-600 text-white px-6">
+            Xác nhận tạo
           </Button>
         </div>
       </form>

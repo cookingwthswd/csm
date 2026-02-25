@@ -55,4 +55,10 @@ export const shipmentsApi = {
       `/shipments/${id}/status`,
       data
     ),
+
+    /**
+     * Delete shipment
+      */
+     delete: (id: number): Promise<void> =>
+    api.delete<void>(`/shipments/${id}`),
 };

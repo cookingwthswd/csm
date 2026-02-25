@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable prettier/prettier */
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -118,5 +122,16 @@ export class ShipmentsController {
     @Body() dto: AddShipmentItemDto,
   ) {
     return this.service.addItem(id, dto);
+  }
+  
+  /**
+   * 
+   * DELETE /shipments/:id - Delete shipment
+   */
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete shipment' })
+  @ApiParam({ name: 'id', type: Number })
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    return this.service.remove(id);
   }
 }

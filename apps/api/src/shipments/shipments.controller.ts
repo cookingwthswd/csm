@@ -28,6 +28,7 @@ import {
 } from './dto/shipment.dto';
 import { ShipmentsService } from './shipments.service'
 import type { AuthUser } from '../auth';
+import { UpdateShipmentDto } from '@repo/types';
 
 /**
  * Shipments Controller
@@ -125,7 +126,6 @@ export class ShipmentsController {
   }
   
   /**
-   * 
    * DELETE /shipments/:id - Delete shipment
    */
   @Delete(':id')
@@ -133,5 +133,13 @@ export class ShipmentsController {
   @ApiParam({ name: 'id', type: Number })
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.service.remove(id);
+  }
+  
+  /**
+   * PUT /shipments/:id - Update shipment details (driver info, notes)
+   */
+  @Put(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateShipmentDto) {
+    return this.service.update(id, dto);
   }
 }

@@ -33,12 +33,26 @@ export const shipmentStatusColors: Record<
 
 export const CreateShipmentDto = z.object({
   orderId: z.number().int().positive(),
+  driverName: z.string().optional().nullable(),
+  driverPhone: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
 });
 
 export type CreateShipmentDto =
   z.infer<typeof CreateShipmentDto>;
 
+export const UpdateShipmentDto = z.object({
+  driverName: z.string().optional().nullable(),
+  driverPhone: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export type UpdateShipmentDto = z.infer<typeof UpdateShipmentDto>;
+
 export const UpdateShipmentStatusDto = z.object({
+  driverName: z.string().optional().nullable(),
+  driverPhone: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   status: ShipmentStatusSchema,
 });
 
@@ -49,7 +63,12 @@ export const ShipmentResponse = z.object({
   id: z.number(),
   order_id: z.number(),
   shipment_code: z.string(),
+  driver_name: z.string().optional().nullable(),
+  driver_phone: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
   status: ShipmentStatusSchema,
+  shipped_date: z.string().nullable(),
+  delivered_date: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });

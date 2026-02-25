@@ -11,6 +11,13 @@ interface PaginatedResponse<T> {
   meta: PaginationMeta;
 }
 
+export type UpdateShipmentPayload = {
+  driverName?: string;
+  driverPhone?: string;
+  notes?: string;
+};
+
+
 /**
  * Shipments API Service
  */
@@ -43,6 +50,17 @@ export const shipmentsApi = {
    */
   create: (data: CreateShipmentDto) =>
     api.post<ShipmentResponse>("/shipments", data),
+
+  /**
+   * Update shipment
+   */
+  update: async (id: number, payload: UpdateShipmentPayload) => {
+    return api.patch<ShipmentResponse>(`/shipments/${id}`, {
+      driverName: payload.driverName,
+      driverPhone: payload.driverPhone,
+      notes: payload.notes,
+    });
+  },
 
   /**
    * Update shipment status

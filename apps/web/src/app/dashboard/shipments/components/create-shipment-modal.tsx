@@ -10,6 +10,9 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess, existi
   const [orderId, setOrderId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [driverName, setDriverName] = useState("");
+  const [driverPhone, setDriverPhone] = useState("");
+  const [notes, setNotes] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +31,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess, existi
       setIsLoading(true);
       setError(null);
       
-      await shipmentsApi.create({ orderId });
+      await shipmentsApi.create({ orderId, driverName, driverPhone, notes });
 
       alert("Tạo vận đơn thành công!");
       onSuccess?.();
@@ -71,6 +74,36 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess, existi
             placeholder="Ví dụ: 1, 2, 3..."
             className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
             required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Tên tài xế</label>
+          <input
+            type="text"
+            value={driverName}
+            onChange={(e) => setDriverName(e.target.value)}
+            placeholder="Nguyễn Văn A..."
+            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Số điện thoại</label>
+          <input
+            type="text"
+            value={driverPhone}
+            onChange={(e) => setDriverPhone(e.target.value)}
+            placeholder="090..."
+            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-1">Ghi chú</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ghi chú giao hàng..."
+            className="w-full h-24 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
           />
         </div>
 

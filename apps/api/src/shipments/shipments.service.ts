@@ -54,9 +54,17 @@ export class ShipmentsService {
       if (total > 0) partially = true;
     }
 
-    let status = 'processing';
-    if (fullyFulfilled) status = 'fulfilled';
-    else if (partially) status = 'partially_fulfilled';
+    // Map fulfillment state to valid order statuses
+    // orders.status check constraint allows:
+    // 'pending', 'approved', 'processing', 'shipping', 'delivered', 'cancelled'
+    let status: 'pending' | 'approved' | 'processing' | 'shipping' | 'delivered' | 'cancelled' =
+      'processing';
+
+    if (fullyFulfilled) {
+      status = 'delivered';
+    } else if (partially) {
+      status = 'shipping';
+    }
 
     await this.supabase.from('orders').update({ status }).eq('id', orderId);
   }

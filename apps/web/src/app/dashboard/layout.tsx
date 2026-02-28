@@ -79,6 +79,7 @@ export default function DashboardLayout({
 
         <nav className="mt-4 flex-1">
           <NavLink href="/dashboard">Dashboard</NavLink>
+          <NavLink href="/dashboard/reports/dashboard">Reports</NavLink>
           <NavLink href="/dashboard/orders">Orders</NavLink>
           <NavLink href="/dashboard/products">Products</NavLink>
           <NavLink href="/dashboard/categories">Categories</NavLink>

@@ -24,10 +24,13 @@ export enum ReportGroupBy {
 export class ReportQueryDto {
   @ApiProperty({
     enum: ReportType,
-    description: 'Type of report to generate',
+    required: false,
+    description:
+      'Type of report to generate. Optional for specific report endpoints.',
   })
+  @IsOptional()
   @IsEnum(ReportType)
-  type!: ReportType;
+  type?: ReportType;
 
   @ApiProperty({
     description: 'Start date (inclusive) in YYYY-MM-DD format',

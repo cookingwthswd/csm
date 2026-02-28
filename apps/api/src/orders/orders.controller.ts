@@ -165,7 +165,6 @@ export class OrdersController {
     UserRoleEnum.ADMIN,
     UserRoleEnum.CK_STAFF,
     UserRoleEnum.MANAGER,
-    UserRoleEnum.COORDINATOR,
     UserRoleEnum.STORE_STAFF
   )
   @UseGuards(CheckStoreAccessGuard)
@@ -192,6 +191,7 @@ export class OrdersController {
   @ApiResponse({ status: 404, description: 'Order not found' })
   @Roles(UserRoleEnum.ADMIN,
     UserRoleEnum.MANAGER,
+    UserRoleEnum.CK_STAFF,
     UserRoleEnum.COORDINATOR) // store_staff không được update status
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
@@ -220,7 +220,6 @@ export class OrdersController {
     @Body() dto: UpdateOrderDto,
     @CurrentUser() user: AuthUser,
   ) {
-    console.log(dto)
     return this.ordersService.update(id, dto, user);
   }
 }

@@ -70,7 +70,15 @@ ckms/
 |------|---------|
 | `app/layout.tsx` | Root layout with fonts |
 | `app/page.tsx` | Home page |
+| `app/login/page.tsx` | Login page with forgot password link |
+| `app/forgot-password/page.tsx` | Password reset request page |
+| `app/reset-password/page.tsx` | Password reset confirmation page |
+| `app/dashboard/layout.tsx` | Dashboard layout with sidebar, Users link, profile link, active state |
+| `app/dashboard/profile/page.tsx` | User profile page |
 | `app/auth-test/page.tsx` | Auth testing page |
+| `components/auth/auth-guard.tsx` | Route protection component |
+| `components/auth/role-guard.tsx` | Role-based access control component |
+| `components/auth/index.ts` | Auth components barrel export |
 | `lib/supabase/client.ts` | Browser Supabase client |
 | `lib/supabase/server.ts` | Server-side Supabase client |
 | `lib/api/client.ts` | API client for backend calls |

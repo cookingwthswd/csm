@@ -1,70 +1,141 @@
-/**
- * Report response DTOs - shape of API responses for reports
- * Used for documentation and type safety; actual data built in service
- */
+import { ApiProperty } from '@nestjs/swagger';
 
-export interface DashboardOverview {
-  totalOrders: number;
-  pendingOrders: number;
-  completedOrders: number;
-  totalRevenue: number;
-  lowStockItems: number;
-  pendingDeliveries: number;
+// Shared interfaces ---------------------------------------------------------
+
+export class TimeSeriesPointDto {
+  @ApiProperty()
+  date!: string; // ISO date string (grouped by day/week/month)
+
+  @ApiProperty()
+  value!: number;
 }
 
-export interface OrdersReportSeries {
-  date: string;
-  total: number;
-  completed: number;
-  revenue: number;
-  byStatus?: Record<string, number>;
+export class StatusBreakdownDto {
+  @ApiProperty()
+  status!: string;
+
+  @ApiProperty()
+  count!: number;
 }
 
-export interface OrdersReport {
-  summary: { total: number; completed: number; cancelled: number; revenue: number };
-  series: OrdersReportSeries[];
+// Dashboard overview --------------------------------------------------------
+
+export class DashboardOverviewDto {
+  @ApiProperty()
+  totalOrders!: number;
+
+  @ApiProperty()
+  pendingOrders!: number;
+
+  @ApiProperty()
+  completedOrders!: number;
+
+  @ApiProperty()
+  totalRevenue!: number;
+
+  @ApiProperty()
+  lowStockItems!: number;
+
+  @ApiProperty()
+  pendingDeliveries!: number;
 }
 
-export interface ProductionReportSeries {
-  date: string;
-  productId?: number;
-  productName?: string;
-  planned: number;
-  produced: number;
-  batches: number;
+// Orders report -------------------------------------------------------------
+
+export class OrdersReportPointDto {
+  @ApiProperty()
+  date!: string;
+
+  @ApiProperty()
+  totalOrders!: number;
+
+  @ApiProperty()
+  completedOrders!: number;
+
+  @ApiProperty()
+  pendingOrders!: number;
+
+  @ApiProperty()
+  revenue!: number;
 }
 
-export interface ProductionReport {
-  summary: { totalPlanned: number; totalProduced: number; plansCompleted: number };
-  series: ProductionReportSeries[];
+export class OrdersReportDto {
+  @ApiProperty({ type: [OrdersReportPointDto] })
+  points!: OrdersReportPointDto[];
 }
 
-export interface InventoryReportSeries {
-  date?: string;
-  itemId: number;
-  itemName: string;
-  storeId?: number;
-  storeName?: string;
-  quantity: number;
-  minStockLevel: number;
-  status: 'ok' | 'low' | 'out';
+// Production report ---------------------------------------------------------
+
+export class ProductionReportPointDto {
+  @ApiProperty()
+  date!: string;
+
+  @ApiProperty()
+  productName!: string;
+
+  @ApiProperty()
+  quantityPlanned!: number;
+
+  @ApiProperty()
+  quantityProduced!: number;
 }
 
-export interface InventoryReport {
-  summary: { totalItems: number; lowStockCount: number; outOfStockCount: number };
-  items: InventoryReportSeries[];
-  alerts?: { id: number; message: string; alertType: string; storeId: number }[];
+export class ProductionReportDto {
+  @ApiProperty({ type: [ProductionReportPointDto] })
+  points!: ProductionReportPointDto[];
 }
 
-export interface DeliveryReportSeries {
-  date: string;
-  total: number;
-  delivered: number;
-  failed: number;
-  avgDeliveryHours?: number;
+// Inventory report ----------------------------------------------------------
+
+export class InventoryReportRowDto {
+  @ApiProperty()
+  itemId!: number;
+
+  @ApiProperty()
+  itemName!: string;
+
+  @ApiProperty()
+  storeId!: number;
+
+  @ApiProperty()
+  storeName!: string | null;
+
+  @ApiProperty()
+  quantity!: number;
+
+  @ApiProperty()
+  minStockLevel!: number | null;
+
+  @ApiProperty()
+  isLowStock!: boolean;
 }
 
-export interface DeliveryReport {
-  summary: { total: number; delivered: number; failed: number; successRate: number };
-  series: DeliveryReportSeries[];
+export class InventoryReportDto {
+  @ApiProperty({ type: [InventoryReportRowDto] })
+  rows!: InventoryReportRowDto[];
 }
+
+// Delivery report -----------------------------------------------------------
+
+export class DeliveryReportPointDto {
+  @ApiProperty()
+  date!: string;
+
+  @ApiProperty()
+  totalShipments!: number;
+
+  @ApiProperty()
+  deliveredShipments!: number;
+
+  @ApiProperty()
+  failedShipments!: number;
+
+  @ApiProperty()
+  averageDeliveryTimeMinutes!: number | null;
+}
+
+export class DeliveryReportDto {
+  @ApiProperty({ type: [DeliveryReportPointDto] })
+  points!: DeliveryReportPointDto[];
+}
+

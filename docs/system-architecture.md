@@ -30,6 +30,7 @@
 graph TB
     subgraph Frontend["apps/web (Next.js)"]
         Pages[Pages/Routes]
+        AuthComponents[Auth Guards]
         Providers[Auth Provider]
         Lib[Lib/Utils]
     end
@@ -52,7 +53,8 @@ graph TB
         Schemas[Zod Schemas]
     end
 
-    Pages --> Providers
+    Pages --> AuthComponents
+    AuthComponents --> Providers
     Providers --> Lib
     Lib --> Auth
     Lib --> Controllers

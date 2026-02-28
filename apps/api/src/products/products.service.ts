@@ -209,6 +209,7 @@ export class ProductsService {
       description: product.description,
       imageUrl: product.image_url,
       isActive: product.is_active,
+      currentPrice: product.current_price,
     };
   }
 }
@@ -228,4 +229,5 @@ interface ProductRow {
   image_url: string | null;
   is_active: boolean;
   categories?: { id: number; name: string };
+  current_price: number;
 }

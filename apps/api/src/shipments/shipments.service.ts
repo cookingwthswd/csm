@@ -54,6 +54,7 @@ export class ShipmentsService {
       if (total > 0) partially = true;
     }
 
+<<<<<<< HEAD
     // Map fulfillment state to valid order statuses
     // orders.status check constraint allows:
     // 'pending', 'approved', 'processing', 'shipping', 'delivered', 'cancelled'

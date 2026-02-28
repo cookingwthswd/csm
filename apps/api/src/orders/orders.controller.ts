@@ -231,7 +231,6 @@ export class OrdersController {
     @Param('id', ParseIntPipe) orderId: number
   ) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
-  }
 }
 
 

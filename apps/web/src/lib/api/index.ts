@@ -4,3 +4,4 @@ export { storesApi } from './stores';
 export { productsApi } from './products';
 export * from "./shipments";
 export * from "./shipment-items";
+export { reportsApi } from './reports';

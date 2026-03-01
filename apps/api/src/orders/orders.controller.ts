@@ -231,13 +231,6 @@ export class OrdersController {
     @Param('id', ParseIntPipe) orderId: number
   ) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
-  }
-
-  @Get(':id')
-  getById(@Param('id', ParseIntPipe) id: number, @Req() req: any,
-) {
-    return this.ordersService.findOne(id, null, req.user.role as UserRoleEnum);
-}
 }
 
 

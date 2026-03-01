@@ -10,6 +10,7 @@ import { StoresModule } from './stores/stores.module';
 import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
+import { ReportsModule } from './reports/reports.module';
 
 /**
  * AppModule - Root Module
@@ -40,6 +41,7 @@ import { ShipmentsModule } from './shipments/shipments.module';
     ProductsModule, // Products (items table)
     OrdersModule, // Template module cho FS team reference
     ShipmentsModule, // Shipments module
+    ReportsModule, // Analytics & dashboard reports
   ],
   controllers: [AppController],
   providers: [AppService],

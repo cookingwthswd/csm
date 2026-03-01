@@ -24,7 +24,6 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
     try {
       setIsLoading(true);
 
-      // 1️⃣ Create shipment
       const shipmentRes = await shipmentsApi.create({
         order_id: orderId,
         driver_name: driverName,
@@ -34,7 +33,6 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
 
       const shipmentId = shipmentRes.id;
 
-      // 2️⃣ Add shipment items
       for (const item of selectedItems) {
         await shipmentsApi.addItem(shipmentId, {
           order_item_id: item.order_item_id,

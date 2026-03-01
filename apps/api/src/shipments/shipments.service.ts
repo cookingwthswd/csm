@@ -218,7 +218,6 @@ export class ShipmentsService {
       throw new BadRequestException('Only preparing shipment can add items');
     }
 
-    // kiểm tra order_item thuộc order này không
     const { data: orderItem } = await this.supabase
       .from('order_items')
       .select('id, quantity_ordered')
@@ -282,7 +281,6 @@ export class ShipmentsService {
 
     const currentStatus = shipment.status;
 
-    // 🚨 Rule chuyển trạng thái
     const allowedTransitions: Record<string, string[]> = {
       pending: ['preparing', 'cancelled'],
       preparing: ['shipping', 'cancelled'],
@@ -334,7 +332,6 @@ export class ShipmentsService {
 
     if (fetchError || !existing) throw new NotFoundException('Vận đơn không tồn tại');
 
-    // Không cho sửa nếu đã hoàn thành hoặc đã hủy (trừ khi là admin muốn khôi phục - tùy logic của bạn)
     if (['delivered', 'cancelled'].includes(existing.status)) {
        throw new BadRequestException('Không thể chỉnh sửa vận đơn đã kết thúc');
     }
@@ -346,7 +343,6 @@ export class ShipmentsService {
       updated_at: new Date().toISOString(),
     };
 
-    // 🎯 Nếu có thay đổi status từ bảng hoặc modal
     if (dto.status && dto.status !== existing.status) {
       const allowed: Record<string, string[]> = {
         preparing: ['pending', 'cancelled'],
@@ -372,7 +368,6 @@ export class ShipmentsService {
 
     if (error) throw new InternalServerErrorException(error.message);
 
-    // 🔄 Cập nhật trạng thái Order dựa trên các Shipment "sống" (không bị cancelled)
     await this.updateOrderFulfillmentStatus(existing.order_id);
 
     return data;

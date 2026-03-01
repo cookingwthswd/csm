@@ -16,7 +16,6 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSuccess }: any)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // load dữ liệu khi mở modal
   useEffect(() => {
     if (!isOpen || !shipment) return;
 
@@ -25,12 +24,10 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSuccess }: any)
       setDriverPhone(shipment.driver_phone || "");
       setNotes(shipment.notes || "");
 
-      // 1️⃣ Load order items remaining
       const items = await orderApi.getOrderItemsWithRemaining(
         shipment.order_id
       );
 
-      // 2️⃣ Load shipment items hiện tại
       const shipmentItems = (await shipmentsApi.getItems(shipment.id)) as any[];
 
      const merged = items.map((item: any) => {
@@ -69,21 +66,18 @@ export function EditShipmentModal({ shipment, isOpen, onClose, onSuccess }: any)
       setIsLoading(true);
       setError(null);
 
-      // 1️⃣ Update shipment info
       await shipmentsApi.update(shipment.id, {
         driver_name: driverName,
         driver_phone: driverPhone,
         notes,
       });
 
-      // 2️⃣ Sync shipment items
       const currentItems = (await shipmentsApi.getItems(shipment.id)) as any[];
 
       const itemsArray = Array.isArray(currentItems)
       ? currentItems
       : [];
 
-      // Update hoặc Add
       for (const item of selectedItems) {
         const existing = itemsArray.find(
           (i: any) =>

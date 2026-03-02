@@ -58,6 +58,24 @@ INSERT INTO recipe_details (product_id, material_id, quantity) VALUES
   (13, 9, 0.15),   -- 150g bột bánh mì
   (13, 8, 0.03);   -- 30g pate
 
+-- Bánh mì đặc biệt = Bột bánh mì + Nhân thịt + Pate + Nước sốt
+INSERT INTO recipe_details (product_id, material_id, quantity) VALUES
+  (14, 9, 0.15),   -- 150g bột bánh mì
+  (14, 10, 0.05),  -- 50g nhân thịt
+  (14, 8, 0.03),   -- 30g pate
+  (14, 11, 0.03);  -- 30ml nước sốt
+
+-- Bánh mì chả = Bột bánh mì + Nhân thịt
+INSERT INTO recipe_details (product_id, material_id, quantity) VALUES
+  (15, 9, 0.15),   -- 150g bột bánh mì
+  (15, 10, 0.06);  -- 60g nhân thịt
+
+-- Nhân thịt = Thịt heo xay + Muối + Nước sốt
+INSERT INTO recipe_details (product_id, material_id, quantity) VALUES
+  (10, 7, 0.8),    -- 800g thịt heo
+  (10, 3, 0.01),   -- 10g muối
+  (10, 11, 0.05);  -- 50ml nước sốt
+
 -- Bột bánh mì = Bột mì + Đường + Muối + Bơ + Trứng + Sữa
 INSERT INTO recipe_details (product_id, material_id, quantity) VALUES
   (9, 1, 0.8),     -- 800g bột mì
@@ -92,10 +110,14 @@ INSERT INTO inventory (store_id, item_id, quantity, min_stock_level, max_stock_l
   (1, 1, 85, 20, 200),   -- Bột mì
   (1, 2, 45, 10, 100),   -- Đường
   (1, 3, 20, 5, 50),     -- Muối
+  (1, 4, 15, 5, 50),     -- Bơ
+  (1, 5, 100, 20, 200),  -- Trứng gà
+  (1, 6, 30, 10, 60),    -- Sữa tươi
   (1, 7, 21, 10, 50),    -- Thịt heo
   (1, 8, 8, 5, 20),      -- Pate
   (1, 9, 25, 10, 50),    -- Bột bánh mì
-  (1, 10, 12, 5, 30);    -- Nhân thịt
+  (1, 10, 12, 5, 30),    -- Nhân thịt
+  (1, 11, 5, 3, 20);     -- Nước sốt
 
 -- Franchise stores inventory (thành phẩm)
 INSERT INTO inventory (store_id, item_id, quantity, min_stock_level, max_stock_level) VALUES
@@ -149,14 +171,26 @@ INSERT INTO shipment_items (shipment_id, order_item_id, batch_id, quantity_shipp
 -- 9. PRODUCTION PLANS
 -- ==========================================
 INSERT INTO production_plans (id, plan_code, start_date, end_date, status, notes) VALUES
-  (1, 'PROD-260116', '2026-01-16', '2026-01-16', 'completed', 'Sản xuất cho đơn ngày 16'),
-  (2, 'PROD-260117', '2026-01-17', '2026-01-17', 'in_progress', 'Sản xuất cho đơn ngày 17');
+  (1, 'PP-260116-001', '2026-01-16', '2026-01-16', 'completed', 'Sản xuất cho đơn ngày 16 - hoàn thành'),
+  (2, 'PP-260117-001', '2026-01-17', '2026-01-17', 'in_progress', 'Sản xuất cho đơn ngày 17 - đang chạy'),
+  (3, 'PP-260118-001', '2026-01-18', '2026-01-19', 'planned', 'Kế hoạch cuối tuần - chưa bắt đầu'),
+  (4, 'PP-260120-001', '2026-01-20', NULL, 'cancelled', 'Đã hủy do thiếu nguyên liệu');
 
 INSERT INTO production_details (plan_id, item_id, quantity_planned, quantity_produced, batch_id, status) VALUES
-  (1, 9, 50, 50, 5, 'completed'),    -- Bột bánh mì
-  (1, 10, 20, 20, 6, 'completed'),   -- Nhân thịt
+  -- Plan 1 (completed): sản xuất bột bánh mì + nhân thịt
+  (1, 9, 50, 50, 5, 'completed'),
+  (1, 10, 20, 20, 6, 'completed'),
+  -- Plan 2 (in_progress): đang sản xuất bột + nhân + nước sốt
   (2, 9, 80, 40, NULL, 'in_progress'),
-  (2, 10, 30, 0, NULL, 'pending');
+  (2, 10, 30, 0, NULL, 'pending'),
+  (2, 11, 10, 0, NULL, 'pending'),
+  -- Plan 3 (planned): kế hoạch sản xuất bánh mì thành phẩm
+  (3, 12, 200, 0, NULL, 'pending'),
+  (3, 13, 100, 0, NULL, 'pending'),
+  (3, 14, 50, 0, NULL, 'pending'),
+  (3, 15, 80, 0, NULL, 'pending'),
+  -- Plan 4 (cancelled)
+  (4, 9, 100, 0, NULL, 'cancelled');
 
 -- ==========================================
 -- 10. ALERTS
@@ -170,10 +204,17 @@ INSERT INTO alerts (store_id, item_id, batch_id, alert_type, message, is_resolve
 -- 11. INVENTORY TRANSACTIONS (sample)
 -- ==========================================
 INSERT INTO inventory_transactions (store_id, item_id, batch_id, quantity_change, transaction_type, reference_type, reference_id, note) VALUES
+  -- Nhập kho nguyên liệu
   (1, 1, 1, 100, 'import', NULL, NULL, 'Nhập kho bột mì'),
-  (1, 1, 1, -15, 'production', 'production_plan', 1, 'Xuất sản xuất'),
+  (1, 2, 2, 50, 'import', NULL, NULL, 'Nhập kho đường'),
   (1, 7, 3, 20, 'import', NULL, NULL, 'Nhập thịt heo'),
-  (1, 7, 3, -2, 'production', 'production_plan', 1, 'Xuất sản xuất nhân'),
+  (1, 8, 4, 10, 'import', NULL, NULL, 'Nhập pate'),
+  -- Xuất sản xuất (Plan 1)
+  (1, 1, 1, -15, 'production', 'production_plan', 1, 'Xuất bột mì cho sản xuất bột bánh mì'),
+  (1, 7, 3, -2, 'production', 'production_plan', 1, 'Xuất thịt heo cho nhân'),
+  (1, 9, 5, 50, 'production', 'production_plan', 1, 'Nhập kho bột bánh mì (hoàn thành)'),
+  (1, 10, 6, 20, 'production', 'production_plan', 1, 'Nhập kho nhân thịt (hoàn thành)'),
+  -- Giao hàng
   (2, 12, NULL, 100, 'import', 'shipment', 1, 'Nhận hàng từ CK'),
   (2, 12, NULL, -50, 'export', NULL, NULL, 'Bán hàng');
 
@@ -186,7 +227,7 @@ SELECT setval('items_id_seq', 15);
 SELECT setval('batches_id_seq', 7);
 SELECT setval('orders_id_seq', 5);
 SELECT setval('shipments_id_seq', 2);
-SELECT setval('production_plans_id_seq', 2);
+SELECT setval('production_plans_id_seq', 4);
 
 -- ==========================================
 -- 13. TEST USERS

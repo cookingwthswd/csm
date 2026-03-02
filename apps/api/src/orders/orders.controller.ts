@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable prettier/prettier */
 import {
   Body,
@@ -22,7 +21,11 @@ import {
 import { CurrentUser, Roles, CheckStoreAccessGuard } from '../auth';
 import type { AuthUser } from '../auth';
 import { PaginationDto } from '../common';
-import { CreateOrderDto, UpdateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
+import {
+  CreateOrderDto,
+  UpdateOrderDto,
+  UpdateOrderStatusDto,
+} from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { UserRoleEnum } from '../users/dto/user.dto';
 
@@ -52,7 +55,7 @@ import { UserRoleEnum } from '../users/dto/user.dto';
 @ApiBearerAuth() // Swagger: show "Authorize" button
 @Controller('orders') // Route prefix: /orders
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   /**
    * GET /orders/store/:id
@@ -143,13 +146,17 @@ export class OrdersController {
     UserRoleEnum.CK_STAFF,
     UserRoleEnum.MANAGER,
     UserRoleEnum.COORDINATOR,
-    UserRoleEnum.STORE_STAFF
+    UserRoleEnum.STORE_STAFF,
   )
   findOne(
     @Param('id', ParseIntPipe) id: number, // ParseIntPipe validate & convert
     @CurrentUser() user: AuthUser,
   ) {
-    return this.ordersService.findOne(id, user.storeId, user.role as UserRoleEnum);
+    return this.ordersService.findOne(
+      id,
+      user.storeId,
+      user.role as UserRoleEnum,
+    );
   }
 
   /**
@@ -168,7 +175,7 @@ export class OrdersController {
     UserRoleEnum.CK_STAFF,
     UserRoleEnum.MANAGER,
     UserRoleEnum.COORDINATOR,
-    UserRoleEnum.STORE_STAFF
+    UserRoleEnum.STORE_STAFF,
   )
   @UseGuards(CheckStoreAccessGuard)
   create(
@@ -192,9 +199,7 @@ export class OrdersController {
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Status updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles(UserRoleEnum.ADMIN,
-    UserRoleEnum.MANAGER,
-    UserRoleEnum.COORDINATOR) // store_staff không được update status
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR) // store_staff không được update status
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,
@@ -204,33 +209,26 @@ export class OrdersController {
   }
 
   /**
- * PUT /orders/:id
- * Update pending orders
- */
+   * PUT /orders/:id
+   * Update pending orders
+   */
   @Put('/:id')
   @ApiOperation({ summary: 'Update order' })
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Order updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles(
-    UserRoleEnum.ADMIN,
-    UserRoleEnum.MANAGER,
-    UserRoleEnum.STORE_STAFF
-  )
+  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.MANAGER, UserRoleEnum.STORE_STAFF)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderDto,
     @CurrentUser() user: AuthUser,
   ) {
-    console.log(dto)
+    console.log(dto);
     return this.ordersService.update(id, dto, user);
   }
 
   @Get(':id/items-with-remaining')
-  getOrderItemsWithRemaining(
-    @Param('id', ParseIntPipe) orderId: number
-  ) {
+  getOrderItemsWithRemaining(@Param('id', ParseIntPipe) orderId: number) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
+  }
 }
-
-

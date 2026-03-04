@@ -13,6 +13,9 @@ import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
 import { NotificationsModule } from './notifications/notifications.module';
 
+import { ProductionModule } from './production/production.module';
+import { RecipesModule } from './recipes/recipes.module';
+
 /**
  * AppModule - Root Module
  *
@@ -43,7 +46,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     OrdersModule, // Template module cho FS team reference
     ShipmentsModule, // Shipments module
     ReportsModule, // Analytics & dashboard reports
-    NotificationsModule, // User notifications (FS6)
+    ProductionModule, // Production plans and batches
+    RecipesModule, // Recipes for products
   ],
   controllers: [AppController],
   providers: [AppService],

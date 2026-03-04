@@ -45,7 +45,7 @@ export const shipmentsApi = {
    * Get shipment by ID
    */
   getById: async (id: number) => {
-    return await api.get(`/shipments/${id}`);
+    return await api.get<ShipmentResponse>(`/shipments/${id}`);
   },
 
   /**

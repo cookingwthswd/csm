@@ -12,4 +12,5 @@ export * from './product';
 export * from "./shipment";
 export * from "./shipment-item";
 export * from './report';
-export * from './notification';
+export * from './production';
+export * from './recipe';

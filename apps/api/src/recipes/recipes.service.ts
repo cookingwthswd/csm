@@ -56,6 +56,10 @@ export class RecipesService {
       quantity: mat.quantity,
     }));
 
+    if (detailsToInsert.length === 0) {
+      return this.findByProductId(dto.productId);
+    }
+
     const { data, error: insErr } = await this.supabase.getClient()
       .from('recipe_details')
       .insert(detailsToInsert)

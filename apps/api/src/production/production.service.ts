@@ -164,9 +164,67 @@ export class ProductionService {
 
     const batch = await this.batchFactory.create(batchDto, { userId: user.id });
 
-    // 4. Update inventory (Placeholder logic for Inventory integration, as requested in FS3)
-    // We deduct raw materials and add product directly using RPC or service.
-    
+    // 4. Update CK inventory
+    const { data: ckStore } = await this.supabase.getClient()
+      .from('stores')
+      .select('id')
+      .eq('type', 'central_kitchen')
+      .single();
+
+    const ckStoreId = ckStore?.id ?? 1;
+
+    // Get recipe for this product
+    const { data: recipeDetails } = await this.supabase.getClient()
+      .from('recipe_details')
+      .select('material_id, quantity')
+      .eq('product_id', detail.item_id);
+
+    // 4a. Deduct raw materials from CK inventory
+    for (const rd of recipeDetails || []) {
+      const deductQty = rd.quantity * detail.quantity_produced;
+
+      // Use maybeSingle() — returns null data (no error) when row not found
+      const { data: invRow } = await this.supabase.getClient()
+        .from('inventory')
+        .select('id, quantity')
+        .eq('store_id', ckStoreId)
+        .eq('item_id', rd.material_id)
+        .maybeSingle();
+
+      if (invRow) {
+        const newQty = Math.max(0, invRow.quantity - deductQty);
+        const { error: deductErr } = await this.supabase.getClient()
+          .from('inventory')
+          .update({ quantity: newQty })
+          .eq('id', invRow.id);
+
+        if (deductErr) throw new BadRequestException(`Failed to deduct material ${rd.material_id}: ${deductErr.message}`);
+      }
+    }
+
+    // 4b. Add finished product to CK inventory
+    const { data: productInv } = await this.supabase.getClient()
+      .from('inventory')
+      .select('id, quantity')
+      .eq('store_id', ckStoreId)
+      .eq('item_id', detail.item_id)
+      .maybeSingle();
+
+    if (productInv) {
+      const { error: addErr } = await this.supabase.getClient()
+        .from('inventory')
+        .update({ quantity: productInv.quantity + detail.quantity_produced })
+        .eq('id', productInv.id);
+
+      if (addErr) throw new BadRequestException(`Failed to add product to inventory: ${addErr.message}`);
+    } else {
+      const { error: insErr } = await this.supabase.getClient()
+        .from('inventory')
+        .insert({ store_id: ckStoreId, item_id: detail.item_id, quantity: detail.quantity_produced });
+
+      if (insErr) throw new BadRequestException(`Failed to create product inventory: ${insErr.message}`);
+    }
+
     return batch;
   }
 
@@ -178,7 +236,7 @@ export class ProductionService {
         quantity_planned,
         items!inner (
           id, name,
-          recipe_details (
+          recipe_details!product_id (
             material_id, quantity,
             items!material_id (name, unit)
           )
@@ -212,13 +270,21 @@ export class ProductionService {
       }
     }
 
-    // Now get the Central Kitchen inventory. Assuming store_id = 1 is CK.
+    // Now get the Central Kitchen inventory — look up CK store dynamically
     const materialIds = Array.from(materialMap.keys());
     if (materialIds.length > 0) {
+      const { data: ckStore } = await this.supabase.getClient()
+        .from('stores')
+        .select('id')
+        .eq('type', 'central_kitchen')
+        .single();
+
+      const ckStoreId = ckStore?.id ?? 1;
+
       const { data: inv } = await this.supabase.getClient()
         .from('inventory')
         .select('item_id, quantity')
-        .eq('store_id', 1) // CK Store
+        .eq('store_id', ckStoreId)
         .in('item_id', materialIds);
 
       const invMap = new Map(inv?.map(i => [i.item_id, i.quantity]) || []);

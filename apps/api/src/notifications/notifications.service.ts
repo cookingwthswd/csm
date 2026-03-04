@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import type { PostgrestError } from '@supabase/supabase-js';
 import type { Database, Notification, NotificationSettings } from '@repo/types';
 import { SupabaseService } from '../common';
@@ -13,7 +17,7 @@ export class NotificationsService {
     throw new InternalServerErrorException(`Database error: ${context}`);
   }
 
-  private mapNotification(row: Database['public']['Tables']['notifications']['Row']): Notification {
+  private mapNotification(row: Record<string, any>): Notification {
     return {
       id: row.id,
       userId: row.user_id,
@@ -26,9 +30,7 @@ export class NotificationsService {
     };
   }
 
-  private mapSettings(
-    row: Database['public']['Tables']['notification_settings']['Row'],
-  ): NotificationSettings {
+  private mapSettings(row: Record<string, any>): NotificationSettings {
     return {
       userId: row.user_id,
       emailEnabled: row.email_enabled,
@@ -171,4 +173,3 @@ export class NotificationsService {
     return this.mapSettings(data);
   }
 }
-

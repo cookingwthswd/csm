@@ -11,6 +11,7 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 /**
  * AppModule - Root Module
@@ -42,6 +43,7 @@ import { ReportsModule } from './reports/reports.module';
     OrdersModule, // Template module cho FS team reference
     ShipmentsModule, // Shipments module
     ReportsModule, // Analytics & dashboard reports
+    NotificationsModule, // User notifications (FS6)
   ],
   controllers: [AppController],
   providers: [AppService],

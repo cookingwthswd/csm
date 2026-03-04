@@ -43,3 +43,7 @@ export const shipmentItemsApi = {
       `/shipment-items/${id}`
     ),
 };
+
+export default function ShipmentItemsPage() {
+  return null;
+}

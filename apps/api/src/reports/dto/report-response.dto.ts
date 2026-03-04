@@ -138,4 +138,3 @@ export class DeliveryReportDto {
   @ApiProperty({ type: [DeliveryReportPointDto] })
   points!: DeliveryReportPointDto[];
 }
-

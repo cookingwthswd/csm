@@ -16,7 +16,7 @@ export const Notification = z.object({
   type: NotificationType,
   title: z.string(),
   message: z.string().nullable(),
-  data: z.record(z.any()).nullable().optional(),
+  data: z.record(z.string(), z.any()).nullable().optional(),
   isRead: z.boolean(),
   createdAt: z.string(),
 });

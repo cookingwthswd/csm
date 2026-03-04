@@ -73,10 +73,10 @@ export class ReportsService {
     let revenue = 0;
 
     for (const row of data ?? []) {
-      if (pendingStatuses.includes(row.status as string)) {
+      if (pendingStatuses.includes(row.status)) {
         pending += 1;
       }
-      if (completedStatuses.includes(row.status as string)) {
+      if (completedStatuses.includes(row.status)) {
         completed += 1;
       }
       if (row.total_amount != null) {
@@ -118,7 +118,10 @@ export class ReportsService {
   private async fetchPendingDeliveries(storeId?: number): Promise<number> {
     let query = this.client
       .from('shipments')
-      .select('id, status, orders!inner(store_id)', { count: 'exact', head: true })
+      .select('id, status, orders!inner(store_id)', {
+        count: 'exact',
+        head: true,
+      })
       .in('status', ['preparing', 'shipping']);
 
     if (storeId) {
@@ -128,7 +131,9 @@ export class ReportsService {
     const { error, count } = await query;
 
     if (error) {
-      throw new InternalServerErrorException('Failed to load pending deliveries');
+      throw new InternalServerErrorException(
+        'Failed to load pending deliveries',
+      );
     }
 
     return count ?? 0;
@@ -156,7 +161,10 @@ export class ReportsService {
     const groups = new Map<string, OrdersReportPointDto>();
 
     for (const row of data ?? []) {
-      const bucket = this.getTimeBucket(row.created_at as string, query.groupBy);
+      const bucket = this.getTimeBucket(
+        row.created_at as string,
+        query.groupBy,
+      );
       const key = bucket;
 
       if (!groups.has(key)) {
@@ -172,7 +180,7 @@ export class ReportsService {
       const point = groups.get(key)!;
       point.totalOrders += 1;
 
-      const status = row.status as string;
+      const status = row.status;
       if (['delivered', 'shipping'].includes(status)) {
         point.completedOrders += 1;
       } else if (['pending', 'approved', 'processing'].includes(status)) {
@@ -216,13 +224,18 @@ export class ReportsService {
     const { data, error } = await dbQuery;
 
     if (error) {
-      throw new InternalServerErrorException('Failed to load production report');
+      throw new InternalServerErrorException(
+        'Failed to load production report',
+      );
     }
 
     const groups = new Map<string, ProductionReportPointDto>();
 
     for (const row of data ?? []) {
-      const bucket = this.getTimeBucket(row.created_at as string, query.groupBy);
+      const bucket = this.getTimeBucket(
+        row.created_at as string,
+        query.groupBy,
+      );
       const productName = (row.items as any)?.name ?? 'Unknown';
       const key = `${bucket}::${productName}`;
 
@@ -250,20 +263,16 @@ export class ReportsService {
 
   // Inventory report --------------------------------------------------------
 
-  async getInventoryReport(
-    query: ReportQueryDto,
-  ): Promise<InventoryReportDto> {
-    let dbQuery = this.client
-      .from('inventory')
-      .select(
-        `
+  async getInventoryReport(query: ReportQueryDto): Promise<InventoryReportDto> {
+    let dbQuery = this.client.from('inventory').select(
+      `
         store_id,
         quantity,
         min_stock_level,
         items:items!inner(id,name),
         stores:stores!inner(name)
       `,
-      );
+    );
 
     if (query.storeId) {
       dbQuery = dbQuery.eq('store_id', query.storeId);
@@ -297,10 +306,8 @@ export class ReportsService {
 
   // Delivery report ---------------------------------------------------------
 
-  async getDeliveryReport(
-    query: ReportQueryDto,
-  ): Promise<DeliveryReportDto> {
-    let dbQuery = this.client
+  async getDeliveryReport(query: ReportQueryDto): Promise<DeliveryReportDto> {
+    const dbQuery = this.client
       .from('shipments')
       .select('created_at,status,shipped_date,delivered_date')
       .gte('created_at', query.dateFrom)
@@ -312,10 +319,16 @@ export class ReportsService {
       throw new InternalServerErrorException('Failed to load delivery report');
     }
 
-    const groups = new Map<string, DeliveryReportPointDto & { totalDuration: number; deliveredCount: number }>();
+    const groups = new Map<
+      string,
+      DeliveryReportPointDto & { totalDuration: number; deliveredCount: number }
+    >();
 
     for (const row of data ?? []) {
-      const bucket = this.getTimeBucket(row.created_at as string, query.groupBy);
+      const bucket = this.getTimeBucket(
+        row.created_at as string,
+        query.groupBy,
+      );
 
       if (!groups.has(bucket)) {
         groups.set(bucket, {
@@ -332,7 +345,7 @@ export class ReportsService {
       const point = groups.get(bucket)!;
       point.totalShipments += 1;
 
-      const status = row.status as string;
+      const status = row.status;
       if (status === 'delivered') {
         point.deliveredShipments += 1;
       }
@@ -341,8 +354,8 @@ export class ReportsService {
       }
 
       if (row.shipped_date && row.delivered_date) {
-        const shipped = new Date(row.shipped_date as string).getTime();
-        const delivered = new Date(row.delivered_date as string).getTime();
+        const shipped = new Date(row.shipped_date).getTime();
+        const delivered = new Date(row.delivered_date).getTime();
         const minutes = (delivered - shipped) / (1000 * 60);
         if (!Number.isNaN(minutes) && minutes >= 0) {
           point.totalDuration += minutes;
@@ -431,7 +444,9 @@ export class ReportsService {
       const firstDayOfYear = new Date(Date.UTC(year, 0, 1));
       const pastDaysOfYear =
         (d.getTime() - firstDayOfYear.getTime()) / (24 * 60 * 60 * 1000);
-      const week = Math.ceil((pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7)
+      const week = Math.ceil(
+        (pastDaysOfYear + firstDayOfYear.getUTCDay() + 1) / 7,
+      )
         .toString()
         .padStart(2, '0');
       return `${year}-W${week}`;
@@ -462,4 +477,3 @@ export class ReportsService {
     return lines.join('\n');
   }
 }
-

@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { PostgrestError } from '@supabase/supabase-js';
-import type { Database, Notification, NotificationSettings } from '@repo/types';
+import type { Notification, NotificationSettings } from '@repo/types';
 import { SupabaseService } from '../common';
 
 @Injectable()
@@ -17,27 +17,27 @@ export class NotificationsService {
     throw new InternalServerErrorException(`Database error: ${context}`);
   }
 
-  private mapNotification(row: Record<string, any>): Notification {
+  private mapNotification(row: any): Notification {
     return {
       id: row.id,
       userId: row.user_id,
       type: row.type as Notification['type'],
       title: row.title,
       message: row.message,
-      data: row.data as Record<string, any> | null,
+      data: (row.data ?? null) as Record<string, unknown> | null,
       isRead: row.is_read,
       createdAt: row.created_at,
     };
   }
-
-  private mapSettings(row: Record<string, any>): NotificationSettings {
+  
+  private mapSettings(row: any): NotificationSettings {
     return {
-      userId: row.user_id,
-      emailEnabled: row.email_enabled,
-      pushEnabled: row.push_enabled,
-      orderUpdates: row.order_updates,
-      stockAlerts: row.stock_alerts,
-      deliveryUpdates: row.delivery_updates,
+      userId: String(row.user_id),
+      emailEnabled: Boolean(row.email_enabled),
+      pushEnabled: Boolean(row.push_enabled),
+      orderUpdates: Boolean(row.order_updates),
+      stockAlerts: Boolean(row.stock_alerts),
+      deliveryUpdates: Boolean(row.delivery_updates),
     };
   }
 

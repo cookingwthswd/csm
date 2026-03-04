@@ -4,11 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../common/services';
-import {
-  CreateStoreDto,
-  StoreQueryDto,
-  UpdateStoreDto,
-} from './dto/store.dto';
+import { CreateStoreDto, StoreQueryDto, UpdateStoreDto } from './dto/store.dto';
 
 /**
  * Stores Service

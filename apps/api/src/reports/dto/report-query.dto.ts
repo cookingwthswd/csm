@@ -73,4 +73,3 @@ export class ReportQueryDto {
   @IsString()
   search?: string;
 }
-

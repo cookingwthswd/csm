@@ -44,8 +44,8 @@ export const shipmentsApi = {
   /**
    * Get shipment by ID
    */
-  getById: async (id: number) => {
-    return await api.get(`/shipments/${id}`);
+  getById: async (id: number): Promise<ShipmentResponse> => {
+    return api.get<ShipmentResponse>(`/shipments/${id}`);
   },
 
   /**

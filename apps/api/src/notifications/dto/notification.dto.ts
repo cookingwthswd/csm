@@ -52,9 +52,7 @@ export class NotificationSettingsDto implements NotificationSettings {
   deliveryUpdates!: boolean;
 }
 
-export class UpdateNotificationSettingsRequestDto
-  implements UpdateNotificationSettingsModel
-{
+export class UpdateNotificationSettingsRequestDto implements UpdateNotificationSettingsModel {
   @ApiProperty({ required: false })
   emailEnabled?: boolean;
 
@@ -70,4 +68,3 @@ export class UpdateNotificationSettingsRequestDto
   @ApiProperty({ required: false })
   deliveryUpdates?: boolean;
 }
-

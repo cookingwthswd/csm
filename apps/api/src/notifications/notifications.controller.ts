@@ -38,7 +38,10 @@ export class NotificationsController {
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get unread notifications count' })
-  @ApiResponse({ status: 200, schema: { properties: { unreadCount: { type: 'number' } } } })
+  @ApiResponse({
+    status: 200,
+    schema: { properties: { unreadCount: { type: 'number' } } },
+  })
   async unreadCount(@CurrentUser() user: AuthUser) {
     const unreadCount = await this.notificationsService.getUnreadCount(user.id);
     return { unreadCount };
@@ -93,4 +96,3 @@ export class NotificationsController {
     return this.notificationsService.updateSettings(user.id, dto);
   }
 }
-

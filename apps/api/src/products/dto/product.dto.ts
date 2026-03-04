@@ -20,7 +20,11 @@ import { PaginationDto } from '../../common/dto/pagination.dto';
  * Maps to `items` table in database
  */
 
-export const ITEM_TYPES = ['material', 'semi_finished', 'finished_product'] as const;
+export const ITEM_TYPES = [
+  'material',
+  'semi_finished',
+  'finished_product',
+] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
 export const ITEM_UNITS = [

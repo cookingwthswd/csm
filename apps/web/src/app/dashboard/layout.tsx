@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
+import { NotificationBell } from '@/features/notifications/components/notification-bell';
 import Link from 'next/link';
 import { Toaster } from 'sonner';
 

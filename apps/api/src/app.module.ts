@@ -11,6 +11,7 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 import { ProductionModule } from './production/production.module';
 import { RecipesModule } from './recipes/recipes.module';

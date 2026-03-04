@@ -1,20 +1,20 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  NotificationType,
-  type Notification as NotificationModel,
-  type NotificationSettings as NotificationSettingsModel,
+  NotificationType as NotificationTypeEnum,
+  type NotificationType,
+  type NotificationSettings,
   type UpdateNotificationSettingsDto as UpdateNotificationSettingsModel,
 } from '@repo/types';
 
-export class NotificationDto implements NotificationModel {
+export class NotificationDto {
   @ApiProperty()
   id!: number;
 
   @ApiProperty()
   userId!: string;
 
-  @ApiProperty({ enum: NotificationType.options })
-  type!: (typeof NotificationType._type);
+  @ApiProperty({ enum: NotificationTypeEnum.options })
+  type!: NotificationType;
 
   @ApiProperty()
   title!: string;
@@ -32,7 +32,7 @@ export class NotificationDto implements NotificationModel {
   createdAt!: string;
 }
 
-export class NotificationSettingsDto implements NotificationSettingsModel {
+export class NotificationSettingsDto implements NotificationSettings {
   @ApiProperty()
   userId!: string;
 
@@ -52,7 +52,9 @@ export class NotificationSettingsDto implements NotificationSettingsModel {
   deliveryUpdates!: boolean;
 }
 
-export class UpdateNotificationSettingsDto implements UpdateNotificationSettingsModel {
+export class UpdateNotificationSettingsRequestDto
+  implements UpdateNotificationSettingsModel
+{
   @ApiProperty({ required: false })
   emailEnabled?: boolean;
 

@@ -1,0 +1,13 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\apps",
+    "\\apps\\api",
+    "\\apps\\api\\src",
+    "\\apps\\api\\src\\notifications",
+    "\\apps\\api\\src\\notifications\\dto",
+    "\\apps\\api\\src\\orders"
+  ],
+  "SelectedNode": "\\apps\\api\\src\\notifications\\dto\\notification.dto.ts",
+  "PreviewInSolutionExplorer": false
+}

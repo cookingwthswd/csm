@@ -20,7 +20,7 @@ import { NotificationsService } from './notifications.service';
 import {
   NotificationDto,
   NotificationSettingsDto,
-  UpdateNotificationSettingsDto,
+  UpdateNotificationSettingsRequestDto,
 } from './dto/notification.dto';
 
 @ApiTags('notifications')
@@ -88,7 +88,7 @@ export class NotificationsController {
   @ApiResponse({ status: 200, type: NotificationSettingsDto })
   async updateSettings(
     @CurrentUser() user: AuthUser,
-    @Body() dto: UpdateNotificationSettingsDto,
+    @Body() dto: UpdateNotificationSettingsRequestDto,
   ) {
     return this.notificationsService.updateSettings(user.id, dto);
   }

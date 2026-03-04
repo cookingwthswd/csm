@@ -12,7 +12,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@repo/types';
-import { AddShipmentItemDto, CreateShipmentDto, UpdateShipmentStatusDto } from './dto/shipment.dto';
+import {
+  AddShipmentItemDto,
+  CreateShipmentDto,
+  UpdateShipmentStatusDto,
+} from './dto/shipment.dto';
 import { UpdateShipmentDto } from '@repo/types';
 import { UserRoleEnum } from '../users/dto/user.dto';
 import { AuthUser } from '../auth';
@@ -38,14 +42,16 @@ export class ShipmentsService {
     let partially = false;
 
     for (const item of items ?? []) {
-     const { data: shipped } = await this.supabase
-      .from('shipment_items')
-      .select(`
+      const { data: shipped } = await this.supabase
+        .from('shipment_items')
+        .select(
+          `
         quantity_shipped,
         shipments!inner(status)
-      `)
-      .eq('order_item_id', item.id)
-      .neq('shipments.status', 'cancelled');
+      `,
+        )
+        .eq('order_item_id', item.id)
+        .neq('shipments.status', 'cancelled');
 
       const total =
         shipped?.reduce((sum, r) => sum + r.quantity_shipped, 0) ?? 0;
@@ -54,12 +60,16 @@ export class ShipmentsService {
       if (total > 0) partially = true;
     }
 
-<<<<<<< HEAD
     // Map fulfillment state to valid order statuses
     // orders.status check constraint allows:
     // 'pending', 'approved', 'processing', 'shipping', 'delivered', 'cancelled'
-    let status: 'pending' | 'approved' | 'processing' | 'shipping' | 'delivered' | 'cancelled' =
-      'processing';
+    let status:
+      | 'pending'
+      | 'approved'
+      | 'processing'
+      | 'shipping'
+      | 'delivered'
+      | 'cancelled' = 'processing';
 
     if (fullyFulfilled) {
       status = 'delivered';
@@ -130,11 +140,11 @@ export class ShipmentsService {
     }
 
     const { data: existingShipment } = await this.supabase
-    .from('shipments')
-    .select('id')
-    .eq('order_id', dto.order_id)
-    .neq('status', 'cancelled')
-    .maybeSingle();
+      .from('shipments')
+      .select('id')
+      .eq('order_id', dto.order_id)
+      .neq('status', 'cancelled')
+      .maybeSingle();
 
     const { data: order } = await this.supabase
       .from('orders')
@@ -183,7 +193,7 @@ export class ShipmentsService {
       const { error: itemsError } = await this.supabase
         .from('shipment_items')
         .insert(
-          orderItems.map(item => ({
+          orderItems.map((item) => ({
             shipment_id: shipment.id,
             order_item_id: item.id,
             quantity_shipped: item.quantity_ordered,
@@ -191,7 +201,9 @@ export class ShipmentsService {
         );
 
       if (itemsError) {
-        throw new InternalServerErrorException('Failed to create shipment items');
+        throw new InternalServerErrorException(
+          'Failed to create shipment items',
+        );
       }
     }
 
@@ -240,10 +252,12 @@ export class ShipmentsService {
 
     const { data: shippedRows } = await this.supabase
       .from('shipment_items')
-      .select(`
+      .select(
+        `
         quantity_shipped,
         shipments!inner(status)
-      `)
+      `,
+      )
       .eq('order_item_id', dto.order_item_id)
       .neq('shipments.status', 'cancelled');
 
@@ -277,7 +291,10 @@ export class ShipmentsService {
     return { success: true };
   }
 
-  async updateStatus(id: number, newStatus: 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled') {
+  async updateStatus(
+    id: number,
+    newStatus: 'pending' | 'preparing' | 'shipping' | 'delivered' | 'cancelled',
+  ) {
     const { data: shipment } = await this.supabase
       .from('shipments')
       .select('*')
@@ -299,7 +316,7 @@ export class ShipmentsService {
     };
     if (!allowedTransitions[currentStatus].includes(newStatus)) {
       throw new BadRequestException(
-        `Không thể chuyển từ ${currentStatus} sang ${newStatus}`
+        `Không thể chuyển từ ${currentStatus} sang ${newStatus}`,
       );
     }
 
@@ -339,10 +356,11 @@ export class ShipmentsService {
       .eq('id', id)
       .single();
 
-    if (fetchError || !existing) throw new NotFoundException('Vận đơn không tồn tại');
+    if (fetchError || !existing)
+      throw new NotFoundException('Vận đơn không tồn tại');
 
     if (['delivered', 'cancelled'].includes(existing.status)) {
-       throw new BadRequestException('Không thể chỉnh sửa vận đơn đã kết thúc');
+      throw new BadRequestException('Không thể chỉnh sửa vận đơn đã kết thúc');
     }
 
     const updateData: any = {
@@ -360,12 +378,16 @@ export class ShipmentsService {
       };
 
       if (!allowed[existing.status]?.includes(dto.status)) {
-        throw new BadRequestException(`Lỗi: Không thể chuyển từ ${existing.status} sang ${dto.status}`);
+        throw new BadRequestException(
+          `Lỗi: Không thể chuyển từ ${existing.status} sang ${dto.status}`,
+        );
       }
 
       updateData.status = dto.status;
-      if (dto.status === 'shipping') updateData.shipped_date = new Date().toISOString();
-      if (dto.status === 'completed') updateData.delivered_date = new Date().toISOString();
+      if (dto.status === 'shipping')
+        updateData.shipped_date = new Date().toISOString();
+      if (dto.status === 'completed')
+        updateData.delivered_date = new Date().toISOString();
     }
 
     const { data, error } = await this.supabase
@@ -414,14 +436,16 @@ export class ShipmentsService {
   async traceBatch(batchId: number) {
     const { data, error } = await this.supabase
       .from('shipment_items')
-      .select(`
+      .select(
+        `
         quantity_shipped,
         shipments (
           shipment_code,
           status,
           orders ( order_code, store_id )
         )
-      `)
+      `,
+      )
       .eq('batch_id', batchId);
 
     if (error) throw new InternalServerErrorException(error.message);
@@ -431,18 +455,23 @@ export class ShipmentsService {
   async traceShipment(id: number) {
     const { data, error } = await this.supabase
       .from('shipment_items')
-      .select(`
+      .select(
+        `
         quantity_shipped,
         batches ( batch_code, expiry_date )
-      `)
+      `,
+      )
       .eq('shipment_id', id);
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
   }
 
-  async updateItem(shipmentId: number, itemId: number, dto: AddShipmentItemDto) {
-
+  async updateItem(
+    shipmentId: number,
+    itemId: number,
+    dto: AddShipmentItemDto,
+  ) {
     const { data: shipmentItem, error: itemError } = await this.supabase
       .from('shipment_items')
       .select('id, shipment_id, order_item_id')
@@ -466,7 +495,7 @@ export class ShipmentsService {
 
     if (shipment.status !== 'pending') {
       throw new BadRequestException(
-        'Chỉ được chỉnh sửa sản phẩm khi shipment ở trạng thái pending'
+        'Chỉ được chỉnh sửa sản phẩm khi shipment ở trạng thái pending',
       );
     }
 
@@ -486,10 +515,12 @@ export class ShipmentsService {
 
     const { data: shippedItems } = await this.supabase
       .from('shipment_items')
-      .select(`
+      .select(
+        `
         quantity_shipped,
         shipments!inner(status)
-      `)
+      `,
+      )
       .eq('order_item_id', shipmentItem.order_item_id)
       .neq('id', itemId)
       .neq('shipments.status', 'cancelled');

@@ -14,7 +14,7 @@ export class NotificationDto implements NotificationModel {
   userId!: string;
 
   @ApiProperty({ enum: NotificationType.options })
-  type!: (typeof NotificationType._type);
+  type!: NotificationType;
 
   @ApiProperty()
   title!: string;

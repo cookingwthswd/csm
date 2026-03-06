@@ -48,6 +48,7 @@ import { RecipesModule } from './recipes/recipes.module';
     ReportsModule, // Analytics & dashboard reports
     ProductionModule, // Production plans and batches
     RecipesModule, // Recipes for products
+    NotificationsModule, // Notifications & settings
   ],
   controllers: [AppController],
   providers: [AppService],

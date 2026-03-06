@@ -20,12 +20,16 @@ import {
 import { UpdateShipmentDto } from '@repo/types';
 import { UserRoleEnum } from '../users/dto/user.dto';
 import { AuthUser } from '../auth';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ShipmentsService {
   private supabase: SupabaseClient<Database>;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly notifications: NotificationsService,
+  ) {
     this.supabase = createClient(
       config.getOrThrow('SUPABASE_URL'),
       config.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
@@ -207,6 +211,9 @@ export class ShipmentsService {
       }
     }
 
+    // Notify: shipment created
+    this.notifications.notifyDeliveryUpdate(user.id, shipment.id, 'Dang chuan bi').catch(() => {});
+
     return shipment;
   }
 
@@ -344,6 +351,30 @@ export class ShipmentsService {
 
     if (error) {
       throw new InternalServerErrorException(error.message);
+    }
+
+    // Notify: shipment status changed
+    const statusLabels: Record<string, string> = {
+      preparing: 'Dang chuan bi',
+      shipping: 'Dang giao hang',
+      delivered: 'Da giao thanh cong',
+      cancelled: 'Da huy',
+    };
+    // Notify the order creator about delivery update
+    if (shipment.order_id) {
+      const { data: orderData } = await this.supabase
+        .from('orders')
+        .select('created_by')
+        .eq('id', shipment.order_id)
+        .single();
+
+      if (orderData?.created_by) {
+        this.notifications.notifyDeliveryUpdate(
+          orderData.created_by,
+          id,
+          statusLabels[newStatus] ?? newStatus,
+        ).catch(() => {});
+      }
     }
 
     return data;

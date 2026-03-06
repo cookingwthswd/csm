@@ -16,7 +16,7 @@ export const Notification = z.object({
   type: NotificationType,
   title: z.string(),
   message: z.string().nullable(),
-  data: z.record(z.any()).nullable().optional(),
+  data: z.record(z.string(), z.any()).nullable().optional(),
   isRead: z.boolean(),
   createdAt: z.string(),
 });
@@ -44,4 +44,13 @@ export type UnreadCountResponse = z.infer<typeof UnreadCountResponse>;
 
 export const UpdateNotificationSettingsDto = NotificationSettings.partial();
 export type UpdateNotificationSettingsDto = z.infer<typeof UpdateNotificationSettingsDto>;
+
+export const CreateNotificationDto = z.object({
+  userId: z.string(),
+  type: NotificationType,
+  title: z.string(),
+  message: z.string().nullable().optional(),
+  data: z.record(z.string(), z.any()).nullable().optional(),
+});
+export type CreateNotificationDto = z.infer<typeof CreateNotificationDto>;
 

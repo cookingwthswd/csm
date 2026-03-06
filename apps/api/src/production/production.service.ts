@@ -5,6 +5,7 @@ import { BatchFactory } from './batch.factory';
 import { ProductionStatusFactory } from './production-status.factory';
 import { CreatePlanDto, UpdatePlanDto, UpdatePlanStatusDto, UpdateProductionDetailDto, CreateBatchDto } from './dto/production.dto';
 import { AuthUser } from '../auth';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProductionService {
@@ -13,6 +14,7 @@ export class ProductionService {
     private planFactory: ProductionPlanFactory,
     private batchFactory: BatchFactory,
     private statusFactory: ProductionStatusFactory,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async findAllPlans(page: number, limit: number) {
@@ -104,6 +106,12 @@ export class ProductionService {
       .single();
 
     if (error) throw new BadRequestException(error.message);
+
+    // Notify: production plan status changed
+    if (dto.status === 'completed') {
+      this.notifications.notifyProductionCompleted(user.id, `Plan #${id}`).catch(() => {});
+    }
+
     return data;
   }
 
@@ -224,6 +232,10 @@ export class ProductionService {
 
       if (insErr) throw new BadRequestException(`Failed to create product inventory: ${insErr.message}`);
     }
+
+    // Notify: batch completed
+    const itemName = (detail.items as any)?.name ?? `Item #${detail.item_id}`;
+    this.notifications.notifyProductionCompleted(user.id, `${itemName} x${detail.quantity_produced}`).catch(() => {});
 
     return batch;
   }

@@ -1,11 +1,22 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { PostgrestError } from '@supabase/supabase-js';
-import type { Database, Notification, NotificationSettings } from '@repo/types';
+import type {
+  Database,
+  Notification,
+  NotificationSettings,
+  NotificationType,
+} from '@repo/types';
 import { SupabaseService } from '../common';
+import { EmailProvider } from './providers/email.provider';
+import { PushProvider } from './providers/push.provider';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private readonly supabase: SupabaseService) {}
+  constructor(
+    private readonly supabase: SupabaseService,
+    private readonly emailProvider: EmailProvider,
+    private readonly pushProvider: PushProvider,
+  ) {}
 
   private handleError(error: PostgrestError, context: string): never {
     // eslint-disable-next-line no-console
@@ -38,6 +49,104 @@ export class NotificationsService {
       deliveryUpdates: row.delivery_updates,
     };
   }
+
+  // ── Create notification (called by other services) ─────────────────
+
+  async create(dto: {
+    userId: string;
+    type: NotificationType;
+    title: string;
+    message?: string | null;
+    data?: Record<string, any> | null;
+  }): Promise<Notification> {
+    const { data, error } = await this.supabase.client
+      .from('notifications')
+      .insert({
+        user_id: dto.userId,
+        type: dto.type,
+        title: dto.title,
+        message: dto.message ?? null,
+        data: (dto.data ?? null) as any,
+        is_read: false,
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      this.handleError(error, 'Failed to create notification');
+    }
+
+    const notification = this.mapNotification(data);
+
+    // Check user settings and dispatch email/push if enabled
+    try {
+      const settings = await this.getSettings(dto.userId);
+      if (settings.emailEnabled) {
+        await this.emailProvider.send(notification, dto.userId);
+      }
+      if (settings.pushEnabled) {
+        await this.pushProvider.send(notification, dto.userId);
+      }
+    } catch {
+      // Don't fail the notification creation if providers fail
+    }
+
+    return notification;
+  }
+
+  // ── Convenience methods for other modules ──────────────────────────
+
+  async notifyOrderCreated(userId: string, orderId: number, storeName: string) {
+    return this.create({
+      userId,
+      type: 'order_created',
+      title: `Don hang moi #${orderId}`,
+      message: `${storeName} vua dat don hang moi`,
+      data: { orderId },
+    });
+  }
+
+  async notifyOrderStatusChanged(userId: string, orderId: number, newStatus: string) {
+    return this.create({
+      userId,
+      type: 'order_status_changed',
+      title: `Don hang #${orderId} cap nhat`,
+      message: `Trang thai moi: ${newStatus}`,
+      data: { orderId, status: newStatus },
+    });
+  }
+
+  async notifyLowStock(userId: string, itemName: string, currentQty: number) {
+    return this.create({
+      userId,
+      type: 'low_stock_alert',
+      title: `Canh bao ton kho thap`,
+      message: `${itemName} chi con ${currentQty}`,
+      data: { itemName, currentQty },
+    });
+  }
+
+  async notifyProductionCompleted(userId: string, batchCode: string) {
+    return this.create({
+      userId,
+      type: 'production_completed',
+      title: `San xuat hoan tat`,
+      message: `Lo ${batchCode} da hoan thanh`,
+      data: { batchCode },
+    });
+  }
+
+  async notifyDeliveryUpdate(userId: string, shipmentId: number, status: string) {
+    return this.create({
+      userId,
+      type: 'delivery_update',
+      title: `Cap nhat giao hang`,
+      message: `Don giao hang #${shipmentId}: ${status}`,
+      data: { shipmentId, status },
+    });
+  }
+
+  // ── List / Read / Delete ───────────────────────────────────────────
 
   async listUserNotifications(userId: string): Promise<Notification[]> {
     const { data, error } = await this.supabase.client
@@ -109,6 +218,8 @@ export class NotificationsService {
     }
   }
 
+  // ── Settings ───────────────────────────────────────────────────────
+
   async getSettings(userId: string): Promise<NotificationSettings> {
     const { data, error } = await this.supabase.client
       .from('notification_settings')
@@ -117,12 +228,10 @@ export class NotificationsService {
       .single();
 
     if (error && error.code !== 'PGRST116') {
-      // PGRST116 = No rows found
       this.handleError(error, 'Failed to get notification settings');
     }
 
     if (!data) {
-      // Return defaults if no settings row exists
       return {
         userId,
         emailEnabled: true,
@@ -171,4 +280,3 @@ export class NotificationsService {
     return this.mapSettings(data);
   }
 }
-

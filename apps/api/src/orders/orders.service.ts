@@ -26,6 +26,7 @@ import {
 } from './dto/order.dto';
 import { UserRoleEnum } from 'src/users/dto/user.dto';
 import { AuthUser } from 'src/auth';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * Orders Service - Business Logic Layer
@@ -44,7 +45,10 @@ import { AuthUser } from 'src/auth';
 export class OrdersService {
   private supabase: SupabaseClient<Database>;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly notifications: NotificationsService,
+  ) {
     // Khởi tạo Supabase client với service role key
     // Service role key có full access, bypass RLS
     this.supabase = createClient<Database>(
@@ -262,7 +266,12 @@ export class OrdersService {
       this.handleError(totalUpdateError, 'Failed to update order total');
 
     // 6️⃣ Return full order
-    return this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
+    const result = await this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
+
+    // 7️⃣ Notify: order created
+    this.notifications.notifyOrderCreated(user.id, order.id, `Store #${dto.storeId}`).catch(() => {});
+
+    return result;
   }
 
   /**
@@ -403,6 +412,12 @@ export class OrdersService {
 
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
+    }
+
+    // Notify: order status changed
+    const createdBy = data.created_by;
+    if (createdBy && createdBy !== user.id) {
+      this.notifications.notifyOrderStatusChanged(createdBy, id, dto.status).catch(() => {});
     }
 
     return this.findOne(id, null, user.role as UserRoleEnum);

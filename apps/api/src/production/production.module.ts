@@ -4,8 +4,10 @@ import { ProductionService } from './production.service';
 import { ProductionPlanFactory } from './production-plan.factory';
 import { BatchFactory } from './batch.factory';
 import { ProductionStatusFactory } from './production-status.factory';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [ProductionController],
   providers: [
     ProductionService,

@@ -336,6 +336,66 @@ export type Database = {
           },
         ];
       };
+      notification_settings: {
+        Row: {
+          user_id: string;
+          email_enabled: boolean;
+          push_enabled: boolean;
+          order_updates: boolean;
+          stock_alerts: boolean;
+          delivery_updates: boolean;
+        };
+        Insert: {
+          user_id: string;
+          email_enabled?: boolean;
+          push_enabled?: boolean;
+          order_updates?: boolean;
+          stock_alerts?: boolean;
+          delivery_updates?: boolean;
+        };
+        Update: {
+          user_id?: string;
+          email_enabled?: boolean;
+          push_enabled?: boolean;
+          order_updates?: boolean;
+          stock_alerts?: boolean;
+          delivery_updates?: boolean;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: number;
+          user_id: string;
+          type: string;
+          title: string;
+          message: string | null;
+          data: Json | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: number;
+          user_id: string;
+          type: string;
+          title: string;
+          message?: string | null;
+          data?: Json | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: number;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          message?: string | null;
+          data?: Json | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       order_items: {
         Row: {
           id: number;

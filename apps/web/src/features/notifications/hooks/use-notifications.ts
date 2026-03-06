@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import {
   fetchNotifications,
   fetchUnreadCount,
@@ -9,50 +9,45 @@ import {
 import { useNotificationStore } from '@/lib/stores/notification.store';
 
 export function useNotifications() {
-  const {
-    notifications,
-    unreadCount,
-    setNotifications,
-    setUnreadCount,
-    markAsReadLocally,
-    markAllAsReadLocally,
-    removeNotificationLocally,
-  } = useNotificationStore((state) => ({
-    notifications: state.notifications,
-    unreadCount: state.unreadCount,
-    setNotifications: state.setNotifications,
-    setUnreadCount: state.setUnreadCount,
-    markAsReadLocally: state.markAsRead,
-    markAllAsReadLocally: state.markAllAsRead,
-    removeNotificationLocally: (id: number) =>
-      state.setNotifications(state.notifications.filter((n) => n.id !== id)),
-  }));
+  // Use individual selectors to avoid creating new object references each render
+  const notifications = useNotificationStore((s) => s.notifications);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const setNotifications = useNotificationStore((s) => s.setNotifications);
+  const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
+  const markAsReadLocally = useNotificationStore((s) => s.markAsRead);
+  const markAllAsReadLocally = useNotificationStore((s) => s.markAllAsRead);
 
   useEffect(() => {
     void (async () => {
-      const [list, count] = await Promise.all([
-        fetchNotifications(),
-        fetchUnreadCount(),
-      ]);
-      setNotifications(list);
-      setUnreadCount(count);
+      try {
+        const [list, count] = await Promise.all([
+          fetchNotifications(),
+          fetchUnreadCount(),
+        ]);
+        setNotifications(list);
+        setUnreadCount(count);
+      } catch {
+        // API not available yet — silently ignore
+      }
     })();
   }, [setNotifications, setUnreadCount]);
 
-  const markAsRead = async (id: number) => {
+  const markAsRead = useCallback(async (id: number) => {
     await markNotificationAsRead(id);
     markAsReadLocally(id);
-  };
+  }, [markAsReadLocally]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     await markAllNotificationsAsRead();
     markAllAsReadLocally();
-  };
+  }, [markAllAsReadLocally]);
 
-  const remove = async (id: number) => {
+  const remove = useCallback(async (id: number) => {
     await deleteNotification(id);
-    removeNotificationLocally(id);
-  };
+    useNotificationStore.getState().setNotifications(
+      useNotificationStore.getState().notifications.filter((n) => n.id !== id),
+    );
+  }, []);
 
   return {
     notifications,

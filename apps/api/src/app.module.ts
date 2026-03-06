@@ -11,6 +11,7 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
+import { InventoryModule } from './inventory/inventory.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { InventoriesModule } from './inventories/inventories.module';
 import { BatchesModule } from './batches/batches.module';
@@ -46,6 +47,7 @@ import { RecipesModule } from './recipes/recipes.module';
     ProductsModule, // Products (items table)
     OrdersModule, // Template module cho FS team reference
     ShipmentsModule, // Shipments module
+    InventoryModule, // Inventory & stock management
     ReportsModule, // Analytics & dashboard reports
     ProductionModule, // Production plans and batches
     RecipesModule, // Recipes for products

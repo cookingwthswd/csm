@@ -25,16 +25,17 @@ export default function RecipeEditorPage() {
   const [localDetails, setLocalDetails] = useState<DetailRow[] | null>(null);
 
   if (isRecipeLoading || isMaterialsLoading) return <div className="p-8 text-gray-500">Loading recipe...</div>;
-  if (!recipeData) return <div className="p-8 text-red-600">Recipe or product not found.</div>;
 
   const materials = materialsData?.data || [];
 
   // Source of truth: local edits nếu có, còn không lấy từ DB
-  const details: DetailRow[] = localDetails ?? (recipeData.recipe_details ?? []).map((d: any) => ({
-    materialId: String(d.material_id),
-    quantity: d.quantity,
-    id: d.id,
-  }));
+  const details: DetailRow[] =
+    localDetails ??
+    ((recipeData as any)?.recipe_details ?? []).map((d: any) => ({
+      materialId: String(d.material_id),
+      quantity: d.quantity,
+      id: d.id,
+    }));
 
   const setDetails = (next: DetailRow[]) => setLocalDetails(next);
 
@@ -89,7 +90,9 @@ export default function RecipeEditorPage() {
         </button>
         <div className="flex-1 flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900">Recipe for {recipeData.name}</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900">
+              Recipe for {(recipeData as any)?.name ?? `Product #${productId}`}
+            </h2>
             <p className="text-sm text-gray-500 pt-1">Define the bill of materials needed to produce 1 unit of this product.</p>
           </div>
           <button

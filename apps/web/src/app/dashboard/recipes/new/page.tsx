@@ -10,15 +10,21 @@ export default function NewRecipePage() {
   const router = useRouter();
   const [selectedProductId, setSelectedProductId] = useState('');
 
-  const { data: allProductsData, isLoading: isLoadingProducts } = useProducts({ limit: 200 });
+  const {
+    data: allProductsData,
+    isLoading: isLoadingProducts,
+    error: productsError,
+  } = useProducts({ limit: 100 });
   const { data: productsWithRecipes, isLoading: isLoadingRecipes } = useProductsWithRecipes();
 
   const configuredIds = new Set((productsWithRecipes || []).map((p: any) => p.id));
-  const unconfiguredProducts = (allProductsData?.data || []).filter(
-    (p: any) =>
-      (p.type === 'finished_product' || p.type === 'semi_finished') &&
-      !configuredIds.has(p.id),
+  // Prefer products that are finished/semi-finished, but fall back to all if needed
+  const allProducts = allProductsData?.data || [];
+  const eligibleProducts = allProducts.filter(
+    (p: any) => p.type === 'finished_product' || p.type === 'semi_finished',
   );
+  const baseList = eligibleProducts.length > 0 ? eligibleProducts : allProducts;
+  const unconfiguredProducts = baseList.filter((p: any) => !configuredIds.has(p.id));
 
   const isLoading = isLoadingProducts || isLoadingRecipes;
 
@@ -49,12 +55,14 @@ export default function NewRecipePage() {
         </div>
 
         <div className="p-6 space-y-4">
-          {isLoading ? (
-            <div className="text-sm text-gray-500">Loading products...</div>
-          ) : unconfiguredProducts.length === 0 ? (
-            <div className="text-sm text-gray-500">
-              All eligible products already have recipes configured.
+          {productsError ? (
+            <div className="text-sm text-red-600">
+              Failed to load products. Please make sure you are logged in and the API is running.
             </div>
+          ) : isLoading ? (
+            <div className="text-sm text-gray-500">Loading products...</div>
+          ) : baseList.length === 0 ? (
+            <div className="text-sm text-gray-500">No products found. Please create a product first.</div>
           ) : (
             <select
               className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -62,7 +70,7 @@ export default function NewRecipePage() {
               onChange={(e) => setSelectedProductId(e.target.value)}
             >
               <option value="" disabled>Select a product...</option>
-              {unconfiguredProducts.map((p: any) => (
+              {(unconfiguredProducts.length > 0 ? unconfiguredProducts : baseList).map((p: any) => (
                 <option key={p.id} value={p.id}>
                   {p.name} — {p.type === 'finished_product' ? 'Finished Product' : 'Semi-finished'}
                 </option>

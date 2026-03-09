@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useProductsWithRecipes } from '@/hooks/use-recipes';
 import Link from 'next/link';
 import { Plus, Search } from 'lucide-react';
+import { useAuth } from '@/providers';
 
 export default function RecipesPage() {
   const router = useRouter();
   const [search, setSearch] = useState('');
+  const { hasRole } = useAuth();
 
   const { data: productsWithRecipes, isLoading } = useProductsWithRecipes();
 
@@ -35,12 +37,14 @@ export default function RecipesPage() {
               className="pl-9 flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <button
-            onClick={() => router.push('/dashboard/recipes/new')}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 h-10 px-4 whitespace-nowrap"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create Recipe
-          </button>
+          {hasRole('admin', 'manager', 'ck_staff') && (
+            <button
+              onClick={() => router.push('/dashboard/recipes/new')}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 h-10 px-4 whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Create Recipe
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -77,12 +81,14 @@ export default function RecipesPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/dashboard/recipes/${product.id}`}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border shadow-sm border-gray-300 bg-transparent text-gray-900 hover:bg-gray-100 h-8 px-3"
-                        >
-                          Edit Recipe
-                        </Link>
+                        {hasRole('admin', 'manager', 'ck_staff') && (
+                          <Link
+                            href={`/dashboard/recipes/${product.id}`}
+                            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border shadow-sm border-gray-300 bg-transparent text-gray-900 hover:bg-gray-100 h-8 px-3"
+                          >
+                            Edit Recipe
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   ))

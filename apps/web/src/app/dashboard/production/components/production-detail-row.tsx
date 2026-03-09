@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { useUpdateProductionDetail, useCompleteProductionDetail } from '@/hooks/use-production';
-import { Button } from '@/components/ui';
 import { CheckCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/providers';
 
 export default function ProductionDetailRow({ detail, planId, planStatus }: { detail: any; planId: number; planStatus: string }) {
   const [produced, setProduced] = useState(detail.quantity_produced || 0);
   const updateDetail = useUpdateProductionDetail();
   const completeDetail = useCompleteProductionDetail();
+  const { hasRole } = useAuth();
+
+  // Backend: update quantity & complete detail allowed for ck_staff, admin
+  const canEditDetail = hasRole('ck_staff', 'admin');
 
   const handleSaveQuantity = async () => {
     try {
@@ -37,7 +41,7 @@ export default function ProductionDetailRow({ detail, planId, planStatus }: { de
     }
   };
 
-  const isActive = planStatus === 'in_progress';
+  const isActive = planStatus === 'in_progress' && canEditDetail;
   const isCompleted = detail.status === 'completed';
 
   return (

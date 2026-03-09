@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useProductionPlan, useUpdateProductionPlanStatus } from '@/hooks/use-production';
-import { Button } from '@/components/ui';
 import { ArrowLeft, Play, CheckCircle, Ban } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import MaterialCalculator from '../components/material-calculator';
 import ProductionDetailRow from '../components/production-detail-row';
 import { toast } from 'sonner';
+import { useAuth } from '@/providers';
 
 export default function ProductionPlanPage() {
   const router = useRouter();
@@ -15,6 +15,9 @@ export default function ProductionPlanPage() {
   const planId = parseInt(id as string, 10);
   const { data: plan, isLoading, error } = useProductionPlan(planId);
   const updateStatus = useUpdateProductionPlanStatus();
+  const { hasRole } = useAuth();
+
+  const canChangeStatus = hasRole('admin', 'manager', 'ck_staff');
   
   const [activeTab, setActiveTab] = useState<'details' | 'materials'>('details');
 
@@ -61,8 +64,8 @@ export default function ProductionPlanPage() {
               {plan.status.replace('_', ' ').toUpperCase()}
             </span>
 
-            {/* Action Buttons based on status */}
-            {plan.status === 'planned' && (
+            {/* Action Buttons based on status & role */}
+            {canChangeStatus && plan.status === 'planned' && (
               <>
                 <button
                   onClick={() => handleStatusChange('in_progress')}
@@ -79,7 +82,7 @@ export default function ProductionPlanPage() {
               </>
             )}
             
-            {plan.status === 'in_progress' && (
+            {canChangeStatus && plan.status === 'in_progress' && (
               <button
                 onClick={() => handleStatusChange('completed')}
                 className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2"

@@ -2,9 +2,9 @@
 
 import { Suspense } from 'react';
 import { useProductionPlans } from '@/hooks/use-production';
-import { Button } from '@/components/ui';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/providers';
 
 function ProductionPlansTable() {
   const { data: plansData, isLoading, error } = useProductionPlans(1, 50);
@@ -77,30 +77,41 @@ function ProductionPlansTable() {
 }
 
 export default function ProductionPage() {
+  const { hasRole } = useAuth();
+  const canManagePlans = hasRole('admin', 'manager', 'ck_staff');
+
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2 mb-6">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900">Production Plans</h2>
-        <div className="flex items-center space-x-2">
-          <Link
-            href="/dashboard/production/new"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-blue-600 text-white hover:bg-blue-700 h-10 py-2 px-4 whitespace-nowrap"
-          >
-            <Plus className="mr-2 h-4 w-4" /> Create Plan
-          </Link>
-        </div>
+        {canManagePlans && (
+          <div className="flex items-center space-x-2">
+            <Link
+              href="/dashboard/production/new"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none bg-blue-600 text-white hover:bg-blue-700 h-10 py-2 px-4 whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" /> Create Plan
+            </Link>
+          </div>
+        )}
       </div>
 
-      <div className="bg-white rounded-lg border shadow-sm">
-        <div className="p-6 border-b">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Recent Plans</h3>
+      {canManagePlans ? (
+        <div className="bg-white rounded-lg border shadow-sm">
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-medium leading-6 text-gray-900">Recent Plans</h3>
+          </div>
+          <div className="p-0">
+            <Suspense fallback={<div className="p-6 text-gray-500">Loading...</div>}>
+              <ProductionPlansTable />
+            </Suspense>
+          </div>
         </div>
-        <div className="p-0">
-          <Suspense fallback={<div className="p-6 text-gray-500">Loading...</div>}>
-            <ProductionPlansTable />
-          </Suspense>
+      ) : (
+        <div className="bg-white rounded-lg border shadow-sm p-6 text-sm text-gray-600">
+          Forbidden content.
         </div>
-      </div>
+      )}
     </div>
   );
 }

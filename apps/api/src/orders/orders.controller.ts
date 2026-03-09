@@ -54,7 +54,7 @@ import { UserRoleEnum } from '../users/dto/user.dto';
 @ApiBearerAuth() // Swagger: show "Authorize" button
 @Controller('orders') // Route prefix: /orders
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   /**
    * GET /orders/store/:id
@@ -147,6 +147,7 @@ export class OrdersController {
     UserRoleEnum.COORDINATOR,
     UserRoleEnum.STORE_STAFF,
   )
+  @UseGuards(CheckStoreAccessGuard)
   findOne(
     @Param('id', ParseIntPipe) id: number, // ParseIntPipe validate & convert
     @CurrentUser() user: AuthUser,
@@ -197,7 +198,10 @@ export class OrdersController {
   @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
   @ApiResponse({ status: 200, description: 'Status updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
-  @Roles(UserRoleEnum.ADMIN, UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR) // store_staff không được update status
+  @Roles(UserRoleEnum.ADMIN, 
+    UserRoleEnum.MANAGER, 
+    UserRoleEnum.COORDINATOR,
+     UserRoleEnum.CK_STAFF)
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderStatusDto,

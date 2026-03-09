@@ -8,7 +8,6 @@ import {
   Post,
   Put,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -174,12 +173,11 @@ export class OrdersController {
     UserRoleEnum.ADMIN,
     UserRoleEnum.CK_STAFF,
     UserRoleEnum.MANAGER,
-    UserRoleEnum.COORDINATOR,
     UserRoleEnum.STORE_STAFF,
   )
   @UseGuards(CheckStoreAccessGuard)
   create(
-    @Body() dto: CreateOrderDto, // Auto-validate
+    @Body() dto: CreateOrderDto,
     @CurrentUser() user: AuthUser,
   ) {
     return this.ordersService.create(dto, user);

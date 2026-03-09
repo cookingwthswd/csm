@@ -26,6 +26,7 @@ import {
 } from './dto/order.dto';
 import { UserRoleEnum } from 'src/users/dto/user.dto';
 import { AuthUser } from 'src/auth';
+import { OrderFactory, OrderItemFactory } from './factories';
 import { NotificationsService } from '../notifications/notifications.service';
 
 /**
@@ -48,9 +49,10 @@ export class OrdersService {
   constructor(
     private configService: ConfigService,
     private readonly notifications: NotificationsService,
+    private orderFactory: OrderFactory,
+    private orderItemFactory: OrderItemFactory,
   ) {
     // Khởi tạo Supabase client với service role key
-    // Service role key có full access, bypass RLS
     this.supabase = createClient<Database>(
       this.configService.getOrThrow('SUPABASE_URL'),
       this.configService.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
@@ -168,18 +170,14 @@ export class OrdersService {
   /**
    * Tạo order mới
    *
-   * FLOW:
-   * 1. Generate order code
+   * FLOW (using Factory Method Pattern):
+   * 1. Use OrderFactory to create order data
    * 2. Insert order record
-   * 3. Insert order items
+   * 3. Use OrderItemFactory to create order items
    * 4. Return complete order
    */
   async create(dto: CreateOrderDto, user: AuthUser) {
     console.log(dto);
-    const orderCode = `ORD-${new Date()
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, '')}-${Date.now().toString().slice(-5)}`;
 
     if (
       (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
@@ -190,17 +188,11 @@ export class OrdersService {
       );
     }
 
-    // 1️⃣ Create order (temporary total_amount = 0)
+    // 1️⃣ Create order using factory
+    const orderData = this.orderFactory.createOrderData(dto, user);
     const { data: order, error: orderError } = await this.supabase
       .from('orders')
-      .insert({
-        store_id: dto.storeId,
-        order_code: orderCode,
-        status: 'pending',
-        notes: dto.notes,
-        created_by: user.id,
-        total_amount: 0,
-      })
+      .insert(orderData)
       .select()
       .single();
 
@@ -210,7 +202,6 @@ export class OrdersService {
 
     // 2️⃣ Fetch current prices
     const itemIds = dto.items.map((i) => i.itemId);
-
     const { data: dbItems, error: itemsFetchError } = await this.supabase
       .from('items')
       .select('id, current_price')
@@ -221,32 +212,17 @@ export class OrdersService {
     }
 
     const priceMap = new Map(
-      dbItems.map((item) => [item.id, item.current_price]),
+      dbItems
+        .filter((item) => item.current_price !== null)
+        .map((item) => [item.id, item.current_price as number]),
     );
 
-    // 3️⃣ Build order items + calculate total
-    let totalAmount = 0;
-
-    const orderItems = dto.items.map((item) => {
-      const unitPrice = priceMap.get(item.itemId);
-
-      if (unitPrice == null) {
-        throw new InternalServerErrorException(
-          `Price not found for item ${item.itemId}`,
-        );
-      }
-
-      const lineTotal = unitPrice * item.quantity;
-      totalAmount += lineTotal;
-
-      return {
-        order_id: order.id,
-        item_id: item.itemId,
-        notes: item.notes,
-        quantity_ordered: item.quantity,
-        unit_price: unitPrice,
-      };
-    });
+    // 3️⃣ Create order items using factory
+    const { orderItems, totalAmount } = this.orderItemFactory.createOrderItems(
+      order.id,
+      dto.items,
+      priceMap,
+    );
 
     // 4️⃣ Insert order items
     const { error: itemsError } = await this.supabase
@@ -277,9 +253,10 @@ export class OrdersService {
   /**
    * Update order
    *
-   * FLOW:
+   * FLOW (using Factory Method Pattern):
    * 1. Fetch order & validate status
    * 2. Only pending orders can be edited
+   * 3. Use OrderItemFactory to rebuild items
    */
   async update(id: number, dto: UpdateOrderDto, user: AuthUser) {
     console.log(dto);
@@ -320,7 +297,6 @@ export class OrdersService {
 
     // 2️⃣ Fetch current prices
     const itemIds = dto.items.map((i) => i.itemId);
-
     const { data: dbItems, error: itemsFetchError } = await this.supabase
       .from('items')
       .select('id, current_price')
@@ -331,32 +307,17 @@ export class OrdersService {
     }
 
     const priceMap = new Map(
-      dbItems.map((item) => [item.id, item.current_price]),
+      dbItems
+        .filter((item) => item.current_price !== null)
+        .map((item) => [item.id, item.current_price as number]),
     );
 
-    // 3️⃣ Rebuild order items + total
-    let totalAmount = 0;
-
-    const orderItems = dto.items.map((item) => {
-      const unitPrice = priceMap.get(item.itemId);
-
-      if (unitPrice == null) {
-        throw new InternalServerErrorException(
-          `Price not found for item ${item.itemId}`,
-        );
-      }
-
-      const lineTotal = unitPrice * item.quantity;
-      totalAmount += lineTotal;
-
-      return {
-        order_id: id,
-        item_id: item.itemId,
-        notes: item.notes,
-        quantity_ordered: item.quantity,
-        unit_price: unitPrice,
-      };
-    });
+    // 3️⃣ Rebuild order items using factory
+    const { orderItems, totalAmount } = this.orderItemFactory.createOrderItems(
+      id,
+      dto.items,
+      priceMap,
+    );
 
     // 4️⃣ Delete old items
     const { error: deleteError } = await this.supabase

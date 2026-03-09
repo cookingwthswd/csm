@@ -69,7 +69,7 @@ export class ShipmentsController {
   @ApiOperation({ summary: 'Create shipment from order' })
   @ApiResponse({ status: 201, description: 'Shipment created' })
   @ApiResponse({ status: 400, description: 'Validation failed' })
-  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN)
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN, UserRoleEnum.CK_STAFF)
   create(@Body() dto: CreateShipmentDto, @CurrentUser() user: AuthUser) {
     return this.service.create(dto, user);
   }
@@ -83,7 +83,7 @@ export class ShipmentsController {
   @ApiResponse({ status: 200, description: 'Shipment status updated' })
   @ApiResponse({ status: 400, description: 'Invalid status transition' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN)
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN, UserRoleEnum.CK_STAFF)
   updateStatus(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateShipmentStatusDto,
@@ -123,7 +123,7 @@ export class ShipmentsController {
   @ApiResponse({ status: 201, description: 'Shipment item added' })
   @ApiResponse({ status: 400, description: 'Invalid batch or quantity' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN)
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN, UserRoleEnum.CK_STAFF)
   addItem(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddShipmentItemDto,
@@ -178,6 +178,7 @@ export class ShipmentsController {
    * PATCH /shipments/:id/items/:itemId - Update shipment item
    */
   @Patch(':shipmentId/items/:itemId')
+  @Roles(UserRoleEnum.MANAGER, UserRoleEnum.COORDINATOR, UserRoleEnum.ADMIN, UserRoleEnum.CK_STAFF)
   updateItem(
     @Param('shipmentId', ParseIntPipe) shipmentId: number,
     @Param('itemId', ParseIntPipe) itemId: number,

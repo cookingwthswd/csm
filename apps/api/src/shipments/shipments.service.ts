@@ -355,10 +355,10 @@ export class ShipmentsService {
 
     // Notify: shipment status changed
     const statusLabels: Record<string, string> = {
-      preparing: 'Dang chuan bi',
-      shipping: 'Dang giao hang',
-      delivered: 'Da giao thanh cong',
-      cancelled: 'Da huy',
+      preparing: 'PREPARING',
+      shipping: 'SHIPPING',
+      delivered: 'DELIVERED',
+      cancelled: 'CANCELLED',
     };
     // Notify the order creator about delivery update
     if (shipment.order_id) {

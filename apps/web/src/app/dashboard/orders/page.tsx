@@ -5,21 +5,37 @@ import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orderApi } from "@/lib/api/orders";
 import { Button } from "@/components/ui";
-import { OrderFormModal } from "./components/order-form-modal";
 import { ConfirmationModal } from "./components/confirmation-modal";
 import type { OrderResponseWithPagination, CreateOrderDto, OrderStatus, OrderResponse, Pagination } from "@repo/types";
 import { ORDER_STATUS, ORDER_STATUS_VALUES, statusColors } from "@repo/types"
 import { OrderDetailsModal } from "./components/order-details-modal";
 import { AddOrderModal } from "./components/create-order-modal";
 import { UpdateOrderModal } from "./components/update-order-model";
+import { useAuthStore } from "@/lib/stores/auth.store";
 
 export default function OrdersPage() {
   const queryClient = useQueryClient();
+  const { profile } = useAuthStore();
   const [orders, setOrders] = useState<OrderResponse[]>()
   const [detailOrderId, setDetailOrderId] = useState<number | null>(null);
   const [paginationData, setPaginationData] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Check if user is store_staff
+  const isStoreStaff = profile?.role === 'store_staff';
+  const isCkStaff = profile?.role === 'ck_staff';
+  const canChangeStatus = profile?.role !== 'store_staff';
+
+  // Filter status options for ck_staff (omit shipping and delivered)
+  const getAvailableStatuses = () => {
+    if (isCkStaff) {
+      return ORDER_STATUS_VALUES.filter(
+        status => status !== ORDER_STATUS.SHIPPING && status !== ORDER_STATUS.DELIVERED
+      );
+    }
+    return ORDER_STATUS_VALUES;
+  };
 
   // Query for fetching orders
   const {
@@ -27,16 +43,23 @@ export default function OrdersPage() {
     isLoading,
     error,
   } = useQuery<OrderResponseWithPagination>({
-    queryKey: ["orders", currentPage, pageSize],
+    queryKey: ["orders", currentPage, pageSize, profile?.storeId],
     queryFn: () => orderApi.getAll({ page: currentPage, limit: pageSize }),
   });
 
   useEffect(() => {
     if (data && !isLoading) {
-      setOrders(data.data)
+      let filteredOrders = data.data;
+      
+      // Filter orders for store_staff to show only their store's orders
+      if (isStoreStaff && profile?.storeId) {
+        filteredOrders = data.data.filter(order => order.storeId === profile.storeId);
+      }
+      
+      setOrders(filteredOrders)
       setPaginationData(data.meta)
     }
-  }, [data]);
+  }, [data, isLoading, isStoreStaff, profile?.storeId]);
 
   // Mutations
   const createMutation = useMutation({
@@ -212,7 +235,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders && !isLoading && orders.map((order, i) => (
+            {orders && !isLoading && orders.map((order) => (
               <tr key={order.id} className="border-b hover:bg-gray-50 text-black">
                 <td className="p-3 font-medium">
                   {order.id}
@@ -238,20 +261,22 @@ export default function OrdersPage() {
                     >
                       Details
                     </Button>
-                    <select
-                      value={order.status as OrderStatus}
-                      onChange={(e) =>
-                        handleStatusUpdate(order.id, e.target.value as OrderStatus)
-                      }
-                      disabled={updateStatusMutation.isPending}
-                      className="rounded border px-2 py-1 text-sm"
-                    >
-                      {ORDER_STATUS_VALUES.map((status) => (
-                        <option key={status} value={status}>
-                          {status.replace("_", " ")}
-                        </option>
-                      ))}
-                    </select>
+                    {canChangeStatus && (
+                      <select
+                        value={order.status as OrderStatus}
+                        onChange={(e) =>
+                          handleStatusUpdate(order.id, e.target.value as OrderStatus)
+                        }
+                        disabled={updateStatusMutation.isPending}
+                        className="rounded border px-2 py-1 text-sm"
+                      >
+                        {getAvailableStatuses().map((status) => (
+                          <option key={status} value={status}>
+                            {status.replace("_", " ")}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {order.status === ORDER_STATUS.PENDING && (
                       <Button
                         variant="secondary"
@@ -263,7 +288,7 @@ export default function OrdersPage() {
                       </Button>
                     )}
 
-                    {order.status === ORDER_STATUS.PENDING && (
+                    {canChangeStatus && order.status === ORDER_STATUS.PENDING && (
                       <button
                         onClick={() => setApproveId(order.id)}
                         className="text-green-600 hover:text-green-800"
@@ -272,13 +297,15 @@ export default function OrdersPage() {
                         Approve
                       </button>
                     )}
-                    <button
-                      onClick={() => setDeleteId(order.id)}
-                      className="text-red-600 hover:text-red-800"
-                      disabled={deleteMutation.isPending}
-                    >
-                      Cancel
-                    </button>
+                    {canChangeStatus && (
+                      <button
+                        onClick={() => setDeleteId(order.id)}
+                        className="text-red-600 hover:text-red-800"
+                        disabled={deleteMutation.isPending}
+                      >
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

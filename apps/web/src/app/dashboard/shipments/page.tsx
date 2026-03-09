@@ -4,19 +4,36 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { shipmentsApi } from "@/lib/api/shipments";
-import type { ShipmentResponse, ShipmentStatus } from "@repo/types";
+import type { OrderStatus, ShipmentResponse, ShipmentStatus } from "@repo/types";
 import CreateShipmentModal from "./components/create-shipment-modal";
 import ViewShipmentModal from "./components/view-shipment-modal";
 import { Pencil, Eye } from "lucide-react";
 import { EditShipmentModal } from "./components/edit-shipment-modal";
+import { orderApi } from "@/lib/api/orders";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function ShipmentsPage() {
+
+  const queryClient = useQueryClient();
   const [data, setData] = useState<ShipmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<ShipmentResponse | null>(null);
   const [viewId, setViewId] = useState<number | null>(null);
+
+    const updateStatusMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { status: OrderStatus } }) =>
+      orderApi.updateStatus(id, data),
+
+    onSuccess: () => {
+      // Invalidate all queries that start with "orders"
+      queryClient.invalidateQueries({ 
+        queryKey: ["orders"],
+        refetchType: 'all' 
+      });
+    },
+  });
 
   const fetchShipments = async () => {
     try {
@@ -48,11 +65,17 @@ export default function ShipmentsPage() {
 
   const handleStatusChange = async (
     shipmentId: number,
-    newStatus: ShipmentStatus
+    newStatus: ShipmentStatus,
+    orderId: number,
   ) => {
     try {
       await shipmentsApi.updateStatus(shipmentId, { status: newStatus });
       fetchShipments();
+      if (newStatus === 'shipping') {
+        updateStatusMutation.mutate({ id: orderId, data: { status: 'shipping' } });
+      } else if (newStatus === 'delivered') {
+        updateStatusMutation.mutate({ id: orderId, data: { status: 'delivered' } });
+      }
     } catch (err: any) {
       alert(err.message || "Không thể đổi trạng thái");
     }
@@ -105,7 +128,8 @@ export default function ShipmentsPage() {
                         onChange={(e) =>
                           handleStatusChange(
                             shipment.id,
-                            e.target.value as ShipmentStatus
+                            e.target.value as ShipmentStatus,
+                            shipment.order_id
                           )
                         }
                         className="border rounded px-2 py-1 text-sm bg-white text-black"

@@ -7,6 +7,7 @@ import { useRecipeByProductId, useSaveRecipe } from '@/hooks/use-recipes';
 import { useProducts } from '@/hooks/use-products';
 import { ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuth } from '@/providers';
 
 type DetailRow = { materialId: string; quantity: number; id?: number };
 
@@ -19,6 +20,9 @@ export default function RecipeEditorPage() {
   const { data: recipeData, isLoading: isRecipeLoading } = useRecipeByProductId(productId);
   const { data: materialsData, isLoading: isMaterialsLoading } = useProducts({ type: 'material', limit: 100 });
   const saveRecipe = useSaveRecipe();
+  const { hasRole } = useAuth();
+
+  const canEditRecipe = hasRole('admin', 'manager', 'ck_staff');
 
   // null = chưa user edit gì → dùng data từ DB
   // array = user đã bắt đầu edit → dùng local state
@@ -95,14 +99,16 @@ export default function RecipeEditorPage() {
             </h2>
             <p className="text-sm text-gray-500 pt-1">Define the bill of materials needed to produce 1 unit of this product.</p>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saveRecipe.isPending}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 h-10 px-4 disabled:opacity-50"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {saveRecipe.isPending ? 'Saving...' : 'Save Recipe'}
-          </button>
+          {canEditRecipe && (
+            <button
+              onClick={handleSave}
+              disabled={saveRecipe.isPending}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-gray-900 text-white hover:bg-gray-800 h-10 px-4 disabled:opacity-50"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {saveRecipe.isPending ? 'Saving...' : 'Save Recipe'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -112,13 +118,15 @@ export default function RecipeEditorPage() {
             <h3 className="text-lg font-medium leading-6 text-gray-900">Materials</h3>
             <p className="text-sm text-gray-500 mt-1">Select materials and required quantities per 1 unit produced.</p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-gray-300 bg-transparent text-gray-900 hover:bg-gray-100 h-9 px-3"
-            onClick={handleAddMaterial}
-          >
-            <Plus className="mr-2 h-4 w-4" /> Add Material
-          </button>
+          {canEditRecipe && (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-gray-300 bg-transparent text-gray-900 hover:bg-gray-100 h-9 px-3"
+              onClick={handleAddMaterial}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Add Material
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -142,9 +150,10 @@ export default function RecipeEditorPage() {
                   <tr key={index} className="bg-white border-b hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <select
-                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                         value={detail.materialId}
                         onChange={(e) => handleChange(index, 'materialId', e.target.value)}
+                        disabled={!canEditRecipe}
                       >
                         <option value="" disabled>Select a material...</option>
                         {materials.map((m: any) => (
@@ -161,17 +170,20 @@ export default function RecipeEditorPage() {
                         step="0.001"
                         value={detail.quantity}
                         onChange={(e) => handleChange(index, 'quantity', e.target.value)}
-                        className="flex h-10 w-32 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex h-10 w-32 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                        disabled={!canEditRecipe}
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center rounded-md h-10 w-10 text-red-600 hover:bg-red-50"
-                        onClick={() => handleRemoveMaterial(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {canEditRecipe && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center rounded-md h-10 w-10 text-red-600 hover:bg-red-50"
+                          onClick={() => handleRemoveMaterial(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

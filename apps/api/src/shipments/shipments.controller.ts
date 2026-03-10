@@ -186,4 +186,14 @@ export class ShipmentsController {
   ) {
     return this.service.updateItem(shipmentId, itemId, dto);
   }
+
+  /**
+   * GET /shipments/batches/item/:itemId
+   */
+  @Get('batches/item/:itemId')
+  @ApiOperation({ summary: 'Get batches for a specific item across all shipments' })
+  @ApiParam({ name: 'itemId', type: Number })
+  getBatchesByItem(@Param('itemId', ParseIntPipe) itemId: number) {
+    return this.service.getBatchesByItem(itemId);
+  }
 }

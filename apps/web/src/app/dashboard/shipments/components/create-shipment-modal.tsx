@@ -16,10 +16,53 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
   const [notes, setNotes] = useState("");
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<any[]>([]); 
+  const [batches, setBatches] = useState<Record<number, any[]>>({});
+
+  const loadBatches = async (itemId: number) => {
+    if (batches[itemId]) return;
+
+    try {
+      const res = await shipmentsApi.getBatchesByItem(itemId);
+      setBatches(prev => ({
+        ...prev,
+        [itemId]: res as any[]
+      }));
+    } catch (err) {
+      console.error("Failed to load batches");
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderId || selectedItems.length === 0) return;
+    setError(null);
+    if (!orderId || selectedItems.length === 0) {
+      setError("Vui lòng chọn ít nhất một sản phẩm và số lượng");
+      return;
+    }
+
+    for (const selected of selectedItems) {
+      const orderItem = orderItems.find((o) => o.id === selected.order_item_id);
+    
+      if (!orderItem) continue;
+      if (selected.quantity_shipped > orderItem.remaining_quantity) {
+        setError(`Sản phẩm ${orderItem.item?.name} chỉ còn ${orderItem.remaining_quantity} cái trong đơn hàng.`);
+        return;
+      }
+
+      if (selected.batch_id) {
+        const itemBatches = batches[orderItem.item_id] || [];
+        const targetBatch = itemBatches.find(b => b.id === selected.batch_id);
+
+        if (targetBatch && selected.quantity_shipped > targetBatch.quantity) {
+          setError(`Lô ${targetBatch.batch_code} chỉ còn ${targetBatch.quantity} sản phẩm trong kho.`);
+          return;
+        }
+      } else {
+        setError(`Vui lòng chọn lô hàng cho sản phẩm ${orderItem.item?.name}`);
+        return;
+      }
+    }
 
     try {
       setIsLoading(true);
@@ -32,6 +75,16 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
       });
 
       const shipmentId = shipmentRes.id;
+
+      const invalidItem = selectedItems.find((i) => {
+        const orderItem = orderItems.find((o) => o.id === i.order_item_id);
+        return i.quantity_shipped > orderItem.remaining_quantity;
+      });
+
+      if (invalidItem) {
+        setError("Số lượng giao vượt quá số lượng còn lại của đơn hàng");
+        return;
+      }
 
       for (const item of selectedItems) {
         await shipmentsApi.addItem(shipmentId, {
@@ -101,6 +154,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
               {/* Quantity */}
               <input
                 type="number"
+                placeholder="Quantity"
                 min={0}
                 max={item.remaining_quantity}
                 className="w-20 border rounded px-2 h-9 text-black"
@@ -128,12 +182,11 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
               />
 
               {/* Batch ID */}
-              <input
-                type="text"
-                placeholder="Batch ID (optional)"
-                className="w-32 border rounded px-2 h-9 text-black"
+              <select
+                className="w-40 border rounded px-2 h-9 text-black"
+                onFocus={() => loadBatches(item.item.id)}
                 onChange={(e) => {
-                  const batch = e.target.value || null;
+                  const batchId = Number(e.target.value);
 
                   setSelectedItems((prev) => {
                     const existing = prev.find(i => i.order_item_id === item.id);
@@ -141,14 +194,21 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
 
                     return prev.map(i =>
                       i.order_item_id === item.id
-                        ? { ...i, batch_id: batch }
+                        ? { ...i, batch_id: batchId }
                         : i
                     );
                   });
                 }}
-              />
-            </div>
+              >
+                <option value="">Select batch</option>
 
+                {(batches[item.item.id] || []).map((batch) => (
+                  <option key={batch.id} value={batch.id} disabled={batch.quantity <= 0}>
+                    {batch.batch_code} (Remaining: {batch.quantity})
+                  </option>
+                ))}
+              </select>
+            </div>
           ))}
         </div>
 
@@ -180,12 +240,6 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
             placeholder="Ghi chú giao hàng..."
             className="w-full h-24 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
           />
-        </div>
-
-        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-          <p className="text-xs text-blue-600 font-medium">
-            Hệ thống sẽ tự động kiểm tra tính hợp lệ của đơn hàng trước khi tạo.
-          </p>
         </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t">

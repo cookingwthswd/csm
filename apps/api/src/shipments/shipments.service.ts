@@ -156,9 +156,9 @@ export class ShipmentsService {
       .eq('id', dto.order_id)
       .single();
 
-    if (!order) throw new BadRequestException('Order not found');
-    if (order.status !== 'processing') {
-      throw new BadRequestException('Only processing orders can be shipped');
+    if (!order) throw new BadRequestException('Không tìm thấy đơn hàng');
+    if (order.status !== 'processed') {
+      throw new BadRequestException('Chỉ có đơn hàng ở trạng thái processed mới có thể tạo vận đơn');
     }
 
     const { data: lastShipment } = await this.supabase
@@ -185,7 +185,7 @@ export class ShipmentsService {
       .single();
 
     if (error || !shipment) {
-      throw new InternalServerErrorException('Failed to create shipment');
+      throw new InternalServerErrorException('Lỗi khi tạo vận đơn: ' + error.message);
     }
 
     const { data: orderItems } = await this.supabase
@@ -206,7 +206,7 @@ export class ShipmentsService {
 
       if (itemsError) {
         throw new InternalServerErrorException(
-          'Failed to create shipment items',
+          'Lỗi khi thêm sản phẩm vào vận đơn: ' + itemsError.message
         );
       }
     }
@@ -240,10 +240,10 @@ export class ShipmentsService {
       .eq('id', shipmentId)
       .single();
 
-    if (!shipment) throw new NotFoundException('Shipment not found');
+    if (!shipment) throw new NotFoundException('Không tìm thấy vận đơn');
 
     if (shipment.status !== 'preparing') {
-      throw new BadRequestException('Only preparing shipment can add items');
+      throw new BadRequestException('Chỉ được thêm sản phẩm khi shipment ở trạng thái preparing');
     }
 
     const { data: orderItem } = await this.supabase
@@ -254,7 +254,7 @@ export class ShipmentsService {
       .single();
 
     if (!orderItem) {
-      throw new BadRequestException('Order item does not belong to this order');
+      throw new BadRequestException('Vật phẩm không tồn tại trong đơn hàng!');
     }
 
     const { data: shippedRows } = await this.supabase
@@ -272,7 +272,7 @@ export class ShipmentsService {
       shippedRows?.reduce((sum, r) => sum + r.quantity_shipped, 0) ?? 0;
 
     if (totalShipped + dto.quantity_shipped > orderItem.quantity_ordered) {
-      throw new BadRequestException('Exceed order quantity');
+      throw new BadRequestException('Vượt quá số lượng còn lại của đơn hàng');
     }
 
     const { data: batch } = await this.supabase
@@ -282,7 +282,7 @@ export class ShipmentsService {
       .single();
 
     if (!batch || batch.current_quantity < dto.quantity_shipped) {
-      throw new BadRequestException('Insufficient batch stock');
+      throw new BadRequestException('Không đủ hàng tồn kho trong lô sản phẩm');
     }
 
     const { error } = await this.supabase.from('shipment_items').insert({
@@ -309,7 +309,7 @@ export class ShipmentsService {
       .single();
 
     if (!shipment) {
-      throw new BadRequestException('Shipment not found');
+      throw new BadRequestException('Không tìm thấy vận đơn');
     }
 
     const currentStatus = shipment.status;
@@ -511,7 +511,7 @@ export class ShipmentsService {
       .single();
 
     if (itemError || !shipmentItem) {
-      throw new BadRequestException('Shipment item not found');
+      throw new BadRequestException('Không tìm thấy sản phẩm trong vận đơn');
     }
 
     const { data: shipment } = await this.supabase
@@ -521,7 +521,7 @@ export class ShipmentsService {
       .single();
 
     if (!shipment) {
-      throw new BadRequestException('Shipment not found');
+      throw new BadRequestException('Không tìm thấy vận đơn');
     }
 
     if (shipment.status !== 'pending') {
@@ -531,7 +531,7 @@ export class ShipmentsService {
     }
 
     if (dto.quantity_shipped <= 0) {
-      throw new BadRequestException('Quantity must be greater than 0');
+      throw new BadRequestException('Số lượng phải lớn hơn 0');
     }
 
     const { data: orderItem } = await this.supabase
@@ -541,7 +541,7 @@ export class ShipmentsService {
       .single();
 
     if (!orderItem) {
-      throw new BadRequestException('Order item not found');
+      throw new BadRequestException('Không tìm thấy sản phẩm trong đơn hàng');
     }
 
     const { data: shippedItems } = await this.supabase
@@ -576,5 +576,21 @@ export class ShipmentsService {
     }
 
     return { success: true };
+  }
+
+  async getBatchesByItem(itemId: number) {
+    const { data, error } = await this.supabase
+      .from('shipment_items')
+      .select(
+        `
+        quantity_shipped,
+        batches ( batch_code, expiry_date ),
+        shipments ( shipment_code, status )
+      `,
+      )
+      .eq('order_item_id', itemId);
+
+    if (error) throw new InternalServerErrorException(error.message);
+    return data;
   }
 }

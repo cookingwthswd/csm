@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { api } from "./client";
 import type {
   ShipmentResponse,
@@ -101,4 +101,6 @@ export const shipmentsApi = {
   getItems: (shipmentId: number) =>
     api.get(`/shipments/${shipmentId}/items`),
 
+  getBatchesByItem: (itemId: number) =>
+    api.get(`/shipments/batches/item/${itemId}`),
 };

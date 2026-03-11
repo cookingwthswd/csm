@@ -25,7 +25,6 @@ export const orderApi = {
         if (query?.limit) params.set('limit', String(query.limit));
 
         const queryString = params.toString();
-        console.log(`/orders${queryString ? `?${queryString}` : ''}`)
         return await api.get<OrderResponseWithPagination>(`/orders${queryString ? `?${queryString}` : ''}`);
     },
 
@@ -40,8 +39,7 @@ export const orderApi = {
         if (query?.limit) params.set('limit', String(query.limit));
 
         const queryString = params.toString();
-        console.log(`/orders${queryString ? `?${queryString}` : ''}`)
-        return await api.get<OrderResponseWithPagination>(`/orders/${query?.storeId}${queryString ? `?${queryString}` : ''}`);
+        return await api.get<OrderResponseWithPagination>(`/orders/store/${query?.storeId}${queryString ? `?${queryString}` : ''}`);
     },
 
     /**

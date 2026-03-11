@@ -38,29 +38,31 @@ export default function OrdersPage() {
     return ORDER_STATUS_VALUES;
   };
 
-  // Query for fetching orders
+  // Query for fetching orders - use different API based on role
   const {
     data,
     isLoading,
     error,
   } = useQuery<OrderResponseWithPagination>({
-    queryKey: ["orders", currentPage, pageSize, profile?.storeId],
-    queryFn: () => orderApi.getAll({ page: currentPage, limit: pageSize }),
+    queryKey: ["orders", currentPage, pageSize, profile?.storeId, isStoreStaff],
+    queryFn: () => {
+      if (isStoreStaff && profile?.storeId) {
+        return orderApi.getAllByStoreId({ 
+          page: currentPage, 
+          limit: pageSize, 
+          storeId: profile.storeId 
+        });
+      }
+      return orderApi.getAll({ page: currentPage, limit: pageSize });
+    },
   });
 
   useEffect(() => {
     if (data && !isLoading) {
-      let filteredOrders = data.data;
-      
-      // Filter orders for store_staff to show only their store's orders
-      if (isStoreStaff && profile?.storeId) {
-        filteredOrders = data.data.filter(order => order.storeId === profile.storeId);
-      }
-      
-      setOrders(filteredOrders)
+      setOrders(data.data)
       setPaginationData(data.meta)
     }
-  }, [data, isLoading, isStoreStaff, profile?.storeId]);
+  }, [data, isLoading]);
 
   // Mutations
   const createMutation = useMutation({

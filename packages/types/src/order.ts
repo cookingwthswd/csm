@@ -96,6 +96,7 @@ export const OrderResponse = z.object({
   updatedAt: z.string(),
   createdBy: z.string(),
   creatorRole: z.string(),
+  approvedBy: z.string().nullable(),
   deliveryDate: z.string().nullable(),
   notes: z.string().nullable(),
   review: z.string().nullable(),

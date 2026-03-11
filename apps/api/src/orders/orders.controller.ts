@@ -221,6 +221,7 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Order updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.MANAGER, UserRoleEnum.STORE_STAFF)
+  @UseGuards(CheckStoreAccessGuard)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderDto,
@@ -231,6 +232,14 @@ export class OrdersController {
   }
 
   @Get(':id/items-with-remaining')
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.STORE_STAFF,
+  )
+  @UseGuards(CheckStoreAccessGuard)
   getOrderItemsWithRemaining(@Param('id', ParseIntPipe) orderId: number) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
   }
@@ -251,6 +260,7 @@ export class OrdersController {
     UserRoleEnum.STORE_STAFF,
     UserRoleEnum.COORDINATOR,
   )
+  @UseGuards(CheckStoreAccessGuard)
   confirmDelivery(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: ConfirmDeliveryDto,
@@ -274,6 +284,7 @@ export class OrdersController {
     UserRoleEnum.STORE_STAFF,
     UserRoleEnum.COORDINATOR,
   )
+  @UseGuards(CheckStoreAccessGuard)
   addReview(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: AddReviewDto,

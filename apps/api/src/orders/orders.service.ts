@@ -98,7 +98,8 @@ export class OrdersService {
           items ( name, type )
         ),
         stores ( name ),
-        users:users!created_by ( full_name, role )
+        users:users!created_by ( full_name, role ),
+        confirmer:users!confirmed_by ( full_name )
   `,
         { count: 'exact' },
       )
@@ -143,7 +144,8 @@ export class OrdersService {
           items ( name, type )
         ),
         stores ( name ),
-        users:users!created_by ( full_name, role )
+        users:users!created_by ( full_name, role ),
+        confirmer:users!confirmed_by ( full_name )
       `,
       )
       .eq('id', id);
@@ -161,8 +163,6 @@ export class OrdersService {
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
     }
-
-    console.log(data);
 
     return this.transformOrder(data as OrderWithRelations);
   }
@@ -360,13 +360,21 @@ export class OrdersService {
    *                                                                    ↘ cancelled
    */
   async updateStatus(id: number, dto: UpdateOrderStatusDto, user: AuthUser) {
+    // Prepare update data
+    const updateData: any = {
+      status: dto.status,
+      notes: dto.notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Set confirmed_by when status changes (except pending and cancelled)
+    if (dto.status !== 'pending' && dto.status !== 'cancelled') {
+      updateData.confirmed_by = user.id;
+    }
+
     const { data, error } = await this.supabase
       .from('orders')
-      .update({
-        status: dto.status,
-        notes: dto.notes,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
@@ -446,10 +454,12 @@ export class OrdersService {
   private transformOrder(order: OrderWithRelations) {
     return {
       id: order.id,
+      chainId: 1, // Default chain ID since it's not in the database
       storeId: order.store_id,
       storeName: order.stores?.name,
       orderCode: order.order_code,
       status: order.status,
+      requestedDate: order.created_at, // Use created_at as requested_date
       deliveryDate: order.delivery_date,
       totalAmount: order.total_amount,
       notes: order.notes,
@@ -466,6 +476,7 @@ export class OrdersService {
       updatedAt: order.updated_at,
       createdBy: order.users.full_name || '',
       creatorRole: order.users.role,
+      approvedBy: order.confirmer?.full_name || null,
       review: (order as any).review || null,
       rating: (order as any).rating || null,
     };
@@ -506,13 +517,18 @@ export class OrdersService {
     }
 
     // 3. Update order status to delivered with optional review
+    // Automatically set to delivered if review is provided
+    const now = new Date().toISOString();
     const updateData: any = {
       status: 'delivered',
-      updated_at: new Date().toISOString(),
+      updated_at: now,
+      confirmed_by: user.id, // Set confirmed_by when confirming delivery
     };
 
+    // Set delivery_date when review is added
     if (dto.review) {
       updateData.review = dto.review;
+      updateData.delivery_date = now;
     }
 
     if (dto.rating) {
@@ -533,8 +549,8 @@ export class OrdersService {
       .from('shipments')
       .update({
         status: 'delivered',
-        delivered_date: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        delivered_date: now,
+        updated_at: now,
       })
       .eq('order_id', orderId);
 
@@ -560,7 +576,7 @@ export class OrdersService {
     // 1. Fetch order and verify it's delivered
     const { data: order, error: fetchError } = await this.supabase
       .from('orders')
-      .select('id, status, store_id')
+      .select('id, status, store_id, delivery_date')
       .eq('id', orderId)
       .single();
 
@@ -580,14 +596,21 @@ export class OrdersService {
       throw new ForbiddenException('You do not have access to this order');
     }
 
-    // 3. Update review
+    // 3. Update review and set delivery_date if not already set
+    const updateData: any = {
+      review: dto.review,
+      rating: dto.rating,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Set delivery_date if not already set
+    if (!order.delivery_date) {
+      updateData.delivery_date = new Date().toISOString();
+    }
+
     const { error: updateError } = await this.supabase
       .from('orders')
-      .update({
-        review: dto.review,
-        rating: dto.rating,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', orderId);
 
     if (updateError) {
@@ -618,4 +641,5 @@ type OrderWithRelations = Database['public']['Tables']['orders']['Row'] & {
   order_items?: OrderItemWithRelations[];
   stores?: { name: string };
   users: { full_name: string; role: string };
+  confirmer?: { full_name: string } | null;
 };

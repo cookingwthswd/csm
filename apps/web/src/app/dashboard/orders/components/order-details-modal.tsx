@@ -5,7 +5,6 @@ import { Modal, Button } from "@/components/ui";
 import { orderApi } from "@/lib/api/orders";
 import type { OrderResponse, OrderStatus } from "@repo/types";
 import { statusColors } from "@repo/types";
-import { useEffect } from "react";
 
 interface OrderDetailsModalProps {
   orderId: number | null;
@@ -120,6 +119,13 @@ export function OrderDetailsModal({
               value={new Date(order.updatedAt).toLocaleString('vi-vn')}
               icon="🕐"
             />
+            {order.approvedBy && (
+              <InfoCard
+                label="Approved By"
+                value={order.approvedBy}
+                icon="✅"
+              />
+            )}
           </div>
 
           {/* Order Notes */}
@@ -132,6 +138,51 @@ export function OrderDetailsModal({
                     Order Notes
                   </p>
                   <p className="mt-1 text-sm text-amber-800">{order.notes}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Review Section */}
+          {(order.review || order.rating) && (
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+              <div className="flex items-start gap-2">
+                <span className="text-xl">⭐</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-green-900">
+                      Store Review
+                    </p>
+                    {order.rating && (
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <span
+                            key={star}
+                            className={`text-lg ${
+                              star <= order.rating!
+                                ? "text-yellow-500"
+                                : "text-gray-300"
+                            }`}
+                          >
+                            ★
+                          </span>
+                        ))}
+                        <span className="ml-2 text-sm font-semibold text-green-900">
+                          {order.rating}/5
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {order.review && (
+                    <p className="mt-2 text-sm text-green-800 italic">
+                      &ldquo;{order.review}&rdquo;
+                    </p>
+                  )}
+                  {order.approvedBy && (
+                    <p className="mt-2 text-xs text-green-700">
+                      Reviewed by: {order.approvedBy}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

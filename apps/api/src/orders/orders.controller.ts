@@ -227,7 +227,6 @@ export class OrdersController {
     @Body() dto: UpdateOrderDto,
     @CurrentUser() user: AuthUser,
   ) {
-    console.log(dto);
     return this.ordersService.update(id, dto, user);
   }
 

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../common/services';
-import { AlertsService } from '.';
+import { AlertsService } from './alerts.service';
 import { CreateInventoryDto, UpdateInventoryLevelsDto, InventoryResponse, LowStockItemResponse, CreateTransactionDto, TransactionResponse } from './dto/inventory.dto';
 
 /**

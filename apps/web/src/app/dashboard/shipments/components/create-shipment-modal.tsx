@@ -28,7 +28,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
     try {
       const res = await shipmentsApi.getBatchesByItem(itemId);
 
-      setBatches(prev => ({ ...prev, [itemId]: res as any[] })); } catch (err) { console.error("Failed to load batches"); }
+        setBatches(prev => ({ ...prev, [itemId]: res as any[] })); } catch { console.error("Failed to load batches"); }
   };
 
   useEffect(() => {

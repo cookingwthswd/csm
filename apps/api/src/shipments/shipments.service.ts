@@ -304,7 +304,9 @@ export class ShipmentsService {
 
     if (newStatus === 'delivered') {
       updateData.delivered_date = new Date().toISOString();
+      await this.processDelivered(id);
     }
+
 
     if (newStatus === 'cancelled') {
       updateData.shipped_date = null;
@@ -558,5 +560,97 @@ export class ShipmentsService {
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  private async processDelivered(shipmentId: number) {
+
+    const { data: shipment } = await this.supabase
+      .from('shipments')
+      .select(`
+        id,
+        order_id,
+        orders(store_id)
+      `)
+      .eq('id', shipmentId)
+      .single();
+
+    const storeId = shipment?.orders?.store_id;
+    if (!storeId) {
+      throw new BadRequestException('Shipment is missing store information');
+    }
+
+    const { data: items } = await this.supabase
+      .from('shipment_items')
+      .select(`
+        id,
+        quantity_shipped,
+        batch_id,
+        order_items(
+          item_id
+        )
+      `)
+      .eq('shipment_id', shipmentId);
+
+    for (const item of items ?? []) {
+
+      const itemId = item.order_items?.item_id;
+      if (!itemId || !item.batch_id) {
+        continue;
+      }
+
+      const { data: batch } = await this.supabase
+        .from('batches')
+        .select('id, current_quantity')
+        .eq('id', item.batch_id)
+        .single();
+
+      if (!batch) {
+        throw new NotFoundException(`Batch ${item.batch_id} not found`);
+      }
+
+      const nextQuantity = Math.max(batch.current_quantity - item.quantity_shipped, 0);
+
+      await this.supabase
+        .from('batches')
+        .update({ current_quantity: nextQuantity })
+        .eq('id', item.batch_id);
+
+      const { data: inv } = await this.supabase
+        .from('inventory')
+        .select('*')
+        .eq('store_id', storeId)
+        .eq('item_id', itemId)
+        .maybeSingle();
+
+      if (inv) {
+        await this.supabase
+          .from('inventory')
+          .update({
+            quantity: inv.quantity + item.quantity_shipped
+          })
+          .eq('id', inv.id);
+      } else {
+        await this.supabase
+          .from('inventory')
+          .insert({
+            store_id: storeId,
+            item_id: itemId,
+            quantity: item.quantity_shipped
+          });
+      }
+
+      await this.supabase
+        .from('inventory_transactions')
+        .insert({
+          store_id: storeId,
+          item_id: itemId,
+          batch_id: item.batch_id,
+          quantity_change: item.quantity_shipped,
+          transaction_type: "shipment_in",
+          reference_type: "shipment",
+          reference_id: shipmentId
+        });
+
+    }
   }
 }

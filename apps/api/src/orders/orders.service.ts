@@ -429,7 +429,7 @@ export class OrdersService {
       .select(`
         id,
         quantity_ordered,
-        item:item_id(name),
+        item:item_id(id, name),
         shipment_items(
           quantity_shipped,
           shipments(status)

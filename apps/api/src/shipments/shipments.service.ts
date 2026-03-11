@@ -143,13 +143,6 @@ export class ShipmentsService {
       throw new ForbiddenException('Bạn không có quyền tạo vận đơn');
     }
 
-    const { data: existingShipment } = await this.supabase
-      .from('shipments')
-      .select('id')
-      .eq('order_id', dto.order_id)
-      .neq('status', 'cancelled')
-      .maybeSingle();
-
     const { data: order } = await this.supabase
       .from('orders')
       .select('id, status, store_id')
@@ -188,30 +181,6 @@ export class ShipmentsService {
       throw new InternalServerErrorException('Lỗi khi tạo vận đơn: ' + error.message);
     }
 
-    const { data: orderItems } = await this.supabase
-      .from('order_items')
-      .select('id, quantity_ordered')
-      .eq('order_id', dto.order_id);
-
-    if (orderItems?.length) {
-      const { error: itemsError } = await this.supabase
-        .from('shipment_items')
-        .insert(
-          orderItems.map((item) => ({
-            shipment_id: shipment.id,
-            order_item_id: item.id,
-            quantity_shipped: item.quantity_ordered,
-          })),
-        );
-
-      if (itemsError) {
-        throw new InternalServerErrorException(
-          'Lỗi khi thêm sản phẩm vào vận đơn: ' + itemsError.message
-        );
-      }
-    }
-
-    // Notify: shipment created
     this.notifications.notifyDeliveryUpdate(user.id, shipment.id, 'Dang chuan bi').catch(() => {});
 
     return shipment;
@@ -580,15 +549,12 @@ export class ShipmentsService {
 
   async getBatchesByItem(itemId: number) {
     const { data, error } = await this.supabase
-      .from('shipment_items')
-      .select(
-        `
-        quantity_shipped,
-        batches ( batch_code, expiry_date ),
-        shipments ( shipment_code, status )
-      `,
-      )
-      .eq('order_item_id', itemId);
+      .from('batches')
+      .select('id, batch_code, current_quantity, expiry_date')
+      .eq('item_id', itemId)
+      .gt('current_quantity', 0)
+      .eq('status', 'active') 
+      .order('expiry_date', { ascending: true });
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;

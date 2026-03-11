@@ -19,6 +19,21 @@ export interface UpdateShipmentPayload {
   notes?: string;
 };
 
+export interface ShipmentItemRecord {
+  id: number;
+  order_item_id: number;
+  batch_id: number | null;
+  quantity_shipped: number;
+  note?: string | null;
+}
+
+export interface ShipmentBatchRecord {
+  id: number;
+  batch_code: string;
+  current_quantity: number;
+  expiry_date: string | null;
+}
+
 
 /**
  * Shipments API Service
@@ -99,8 +114,8 @@ export const shipmentsApi = {
     ),
 
   getItems: (shipmentId: number) =>
-    api.get(`/shipments/${shipmentId}/items`),
+    api.get<ShipmentItemRecord[]>(`/shipments/${shipmentId}/items`),
 
   getBatchesByItem: (itemId: number) =>
-    api.get(`/shipments/batches/item/${itemId}`),
+    api.get<ShipmentBatchRecord[]>(`/shipments/batches/item/${itemId}`),
 };

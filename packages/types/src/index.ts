@@ -1,6 +1,5 @@
 // Database types - auto-generated from Supabase
 // Regenerate: supabase gen types typescript --local > packages/types/src/database.types.ts
-// include explicit extension so Node's ESM resolver can find it during dev
 export * from "./database.types.ts";
 
 // Base types

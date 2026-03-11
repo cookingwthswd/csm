@@ -466,7 +466,136 @@ export class OrdersService {
       updatedAt: order.updated_at,
       createdBy: order.users.full_name || '',
       creatorRole: order.users.role,
+      review: (order as any).review || null,
+      rating: (order as any).rating || null,
     };
+  }
+
+  /**
+   * Confirm delivery - Updates both order and shipment status to 'delivered'
+   * Optionally adds review and rating
+   */
+  async confirmDelivery(
+    orderId: number,
+    dto: { review?: string; rating?: number },
+    user: AuthUser,
+  ) {
+    // 1. Fetch order and verify it's in shipping status
+    const { data: order, error: fetchError } = await this.supabase
+      .from('orders')
+      .select('id, status, store_id')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    if (order.status !== 'shipping') {
+      throw new BadRequestException(
+        'Only orders in shipping status can be confirmed for delivery',
+      );
+    }
+
+    // 2. Verify user has access (store_staff can only confirm their store's orders)
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      user.storeId !== order.store_id
+    ) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // 3. Update order status to delivered with optional review
+    const updateData: any = {
+      status: 'delivered',
+      updated_at: new Date().toISOString(),
+    };
+
+    if (dto.review) {
+      updateData.review = dto.review;
+    }
+
+    if (dto.rating) {
+      updateData.rating = dto.rating;
+    }
+
+    const { error: orderUpdateError } = await this.supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId);
+
+    if (orderUpdateError) {
+      this.handleError(orderUpdateError, 'Failed to update order status');
+    }
+
+    // 4. Update shipment status to delivered
+    const { error: shipmentUpdateError } = await this.supabase
+      .from('shipments')
+      .update({
+        status: 'delivered',
+        delivered_date: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('order_id', orderId);
+
+    if (shipmentUpdateError) {
+      this.handleError(
+        shipmentUpdateError,
+        'Failed to update shipment status',
+      );
+    }
+
+    // 5. Return updated order
+    return this.findOne(orderId, user.storeId, user.role as UserRoleEnum);
+  }
+
+  /**
+   * Add review to delivered order
+   */
+  async addReview(
+    orderId: number,
+    dto: { review: string; rating: number },
+    user: AuthUser,
+  ) {
+    // 1. Fetch order and verify it's delivered
+    const { data: order, error: fetchError } = await this.supabase
+      .from('orders')
+      .select('id, status, store_id')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    if (order.status !== 'delivered') {
+      throw new BadRequestException('Only delivered orders can be reviewed');
+    }
+
+    // 2. Verify user has access
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      user.storeId !== order.store_id
+    ) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // 3. Update review
+    const { error: updateError } = await this.supabase
+      .from('orders')
+      .update({
+        review: dto.review,
+        rating: dto.rating,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orderId);
+
+    if (updateError) {
+      this.handleError(updateError, 'Failed to add review');
+    }
+
+    // 4. Return updated order
+    return this.findOne(orderId, user.storeId, user.role as UserRoleEnum);
   }
 }
 

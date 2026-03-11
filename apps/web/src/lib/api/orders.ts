@@ -25,8 +25,23 @@ export const orderApi = {
         if (query?.limit) params.set('limit', String(query.limit));
 
         const queryString = params.toString();
-        console.log('order api', await api.get<OrderResponseWithPagination>(`/orders${queryString ? `?${queryString}` : ''}`))
+        console.log(`/orders${queryString ? `?${queryString}` : ''}`)
         return await api.get<OrderResponseWithPagination>(`/orders${queryString ? `?${queryString}` : ''}`);
+    },
+
+    /**
+     * Get all orders of a store
+     */
+    getAllByStoreId: async (query?: { status?: OrderStatus; user_id?: number; page?: number; limit?: number; storeId: number }) => {
+        const params = new URLSearchParams();
+        if (query?.status) params.set('status', query.status);
+        if (query?.user_id) params.set('user_id', String(query.user_id));
+        if (query?.page) params.set('page', String(query.page));
+        if (query?.limit) params.set('limit', String(query.limit));
+
+        const queryString = params.toString();
+        console.log(`/orders${queryString ? `?${queryString}` : ''}`)
+        return await api.get<OrderResponseWithPagination>(`/orders/${query?.storeId}${queryString ? `?${queryString}` : ''}`);
     },
 
     /**
@@ -72,4 +87,16 @@ export const orderApi = {
   await api.get<OrderItemWithRemaining[]>(
     `/orders/${orderId}/items-with-remaining`
   ),
+
+    /**
+     * Confirm delivery - updates order and shipment to 'delivered'
+     */
+    confirmDelivery: async (orderId: number, data: { review?: string; rating?: number }) =>
+        await api.post<OrderResponse>(`/orders/${orderId}/confirm-delivery`, data),
+
+    /**
+     * Add review to delivered order
+     */
+    addReview: async (orderId: number, data: { review: string; rating: number }) =>
+        await api.post<OrderResponse>(`/orders/${orderId}/review`, data),
 };

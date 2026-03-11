@@ -23,6 +23,8 @@ import {
   CreateOrderDto,
   UpdateOrderDto,
   UpdateOrderStatusDto,
+  ConfirmDeliveryDto,
+  AddReviewDto,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { UserRoleEnum } from '../users/dto/user.dto';
@@ -231,5 +233,52 @@ export class OrdersController {
   @Get(':id/items-with-remaining')
   getOrderItemsWithRemaining(@Param('id', ParseIntPipe) orderId: number) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
+  }
+
+  /**
+   * POST /orders/:id/confirm-delivery
+   * Confirm delivery - updates order and shipment to 'delivered'
+   * Optionally adds review and rating
+   */
+  @Post(':id/confirm-delivery')
+  @ApiOperation({ summary: 'Confirm delivery and optionally add review' })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
+  @ApiResponse({ status: 200, description: 'Delivery confirmed' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.STORE_STAFF,
+    UserRoleEnum.COORDINATOR,
+  )
+  confirmDelivery(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ConfirmDeliveryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.ordersService.confirmDelivery(id, dto, user);
+  }
+
+  /**
+   * POST /orders/:id/review
+   * Add review to delivered order
+   */
+  @Post(':id/review')
+  @ApiOperation({ summary: 'Add review to delivered order' })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
+  @ApiResponse({ status: 200, description: 'Review added' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.STORE_STAFF,
+    UserRoleEnum.COORDINATOR,
+  )
+  addReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddReviewDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.ordersService.addReview(id, dto, user);
   }
 }

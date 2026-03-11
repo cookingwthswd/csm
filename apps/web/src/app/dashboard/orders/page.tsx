@@ -11,6 +11,7 @@ import { ORDER_STATUS, ORDER_STATUS_VALUES, statusColors } from "@repo/types"
 import { OrderDetailsModal } from "./components/order-details-modal";
 import { AddOrderModal } from "./components/create-order-modal";
 import { UpdateOrderModal } from "./components/update-order-model";
+import { ConfirmShipmentModal } from "./components/confirm-shipment-modal";
 import { useAuthStore } from "@/lib/stores/auth.store";
 
 export default function OrdersPage() {
@@ -99,12 +100,23 @@ export default function OrdersPage() {
     },
   });
 
+  const confirmDeliveryMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { review?: string; rating?: number } }) =>
+      orderApi.confirmDelivery(id, data),
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["orders"], refetchType: 'all' });
+      setConfirmShipmentOrder(null);
+    },
+  });
+
 
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<OrderResponse | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [approveId, setApproveId] = useState<number | null>(null);
+  const [confirmShipmentOrder, setConfirmShipmentOrder] = useState<OrderResponse | null>(null);
 
   const handleFormSubmit = (data: CreateOrderDto) => {
     createMutation.mutate(data);
@@ -117,6 +129,10 @@ export default function OrdersPage() {
   const handleDelete = () => {
     if (!deleteId) return;
     deleteMutation.mutate(deleteId);
+  };
+
+  const handleConfirmShipment = (orderId: number, data: { review?: string; rating?: number }) => {
+    confirmDeliveryMutation.mutate({ id: orderId, data });
   };
 
   const getStatusBadge = (status: OrderStatus) => {
@@ -288,6 +304,16 @@ export default function OrdersPage() {
                       </Button>
                     )}
 
+                    {order.status === ORDER_STATUS.SHIPPING && isStoreStaff && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setConfirmShipmentOrder(order)}
+                        className="bg-green-50 text-green-700 hover:bg-green-100"
+                      >
+                        Confirm Shipment
+                      </Button>
+                    )}
+
                     {canChangeStatus && order.status === ORDER_STATUS.PENDING && (
                       <button
                         onClick={() => setApproveId(order.id)}
@@ -429,6 +455,13 @@ export default function OrdersPage() {
           updateMutation.mutate({ id, data })
         }
         isLoading={updateMutation.isPending}
+      />
+      <ConfirmShipmentModal
+        isOpen={!!confirmShipmentOrder}
+        order={confirmShipmentOrder}
+        onClose={() => setConfirmShipmentOrder(null)}
+        onConfirm={handleConfirmShipment}
+        isLoading={confirmDeliveryMutation.isPending}
       />
     </div>
   );

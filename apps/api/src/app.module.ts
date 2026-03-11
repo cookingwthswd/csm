@@ -12,7 +12,8 @@ import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
 import { NotificationsModule } from './notifications/notifications.module';
-
+import { InventoriesModule } from './inventories/inventories.module';
+import { BatchesModule } from './batches/batches.module';
 import { ProductionModule } from './production/production.module';
 import { RecipesModule } from './recipes/recipes.module';
 
@@ -48,6 +49,8 @@ import { RecipesModule } from './recipes/recipes.module';
     ReportsModule, // Analytics & dashboard reports
     ProductionModule, // Production plans and batches
     RecipesModule, // Recipes for products
+    InventoriesModule, // Inventory management
+    BatchesModule, // Batch management
     NotificationsModule, // Notifications & settings
   ],
   controllers: [AppController],

@@ -111,6 +111,7 @@ export default function ShipmentsPage() {
                         className="border rounded px-2 py-1 text-sm bg-white text-black"
                       >
                         <option value="pending">Pending</option>
+                        <option value="preparing">Preparing</option>
                         <option value="shipping">Shipping</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>

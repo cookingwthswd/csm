@@ -1,55 +1,34 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
 import { Modal, Button } from "@/components/ui";
 import { shipmentsApi } from "@/lib/api/shipments";
-import { AlertCircle } from "lucide-react";
 import { orderApi } from "@/lib/api/orders";
+import { AlertCircle } from "lucide-react";
 
-export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) {
+export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any) {
+
   const [orderId, setOrderId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [batches, setBatches] = useState<Record<number, any[]>>({});
+
   const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const [orderItems, setOrderItems] = useState<any[]>([]);
-  const [selectedItems, setSelectedItems] = useState<any[]>([]); 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orderId || selectedItems.length === 0) return;
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadBatches = async (itemId: number) => {
+    if (batches[itemId]) return;
 
     try {
-      setIsLoading(true);
+      const res = await shipmentsApi.getBatchesByItem(itemId);
 
-      const shipmentRes = await shipmentsApi.create({
-        order_id: orderId,
-        driver_name: driverName,
-        driver_phone: driverPhone,
-        notes
-      });
-
-      const shipmentId = shipmentRes.id;
-
-      for (const item of selectedItems) {
-        await shipmentsApi.addItem(shipmentId, {
-          order_item_id: item.order_item_id,
-          quantity_shipped: item.quantity_shipped,
-          batch_id: item.batch_id ?? null
-        });
-      }
-
-      alert("Tạo vận đơn thành công!");
-      onSuccess?.();
-      onClose();
-
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+        setBatches(prev => ({ ...prev, [itemId]: res as any[] })); } catch { console.error("Failed to load batches"); }
   };
 
   useEffect(() => {
@@ -63,53 +42,120 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
     loadItems();
   }, [orderId]);
 
+  useEffect(() => {
+    orderItems.forEach((item) => {
+      if (item.item?.id) {
+        loadBatches(item.item.id);
+      }
+    });
+  }, [orderItems]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!orderId || selectedItems.length === 0) {
+      setError("Vui lòng chọn ít nhất một sản phẩm");
+      return;
+    }
+
+    for (const selected of selectedItems) {
+      const orderItem = orderItems.find(
+        (o) => o.id === selected.order_item_id
+      );
+
+      if (!orderItem) continue;
+
+      if (selected.quantity_shipped > orderItem.remaining_quantity) {
+        setError(
+          `Sản phẩm ${orderItem.item?.name} chỉ còn ${orderItem.remaining_quantity}`
+        );
+        return;
+      }
+
+      if (!selected.batch_id) {
+        setError(`Vui lòng chọn batch cho ${orderItem.item?.name}`);
+        return;
+      }
+
+      if (!orderItem.batch_id) {
+        setError("Please select batch");
+        return;
+      }
+
+    }
+
+    try {
+      setIsLoading(true);
+
+      const shipment = await shipmentsApi.create({
+        order_id: orderId,
+        driver_name: driverName,
+        driver_phone: driverPhone,
+        notes,
+      });
+
+      for (const item of selectedItems) {
+        await shipmentsApi.addItem(shipment.id, item);
+      }
+
+      alert("Tạo vận đơn thành công!");
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "Tạo vận đơn thất bại");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Shipment">
-      <div className="text-black">
+    <Modal isOpen={isOpen} onClose={onClose} title="Create Shipment">
       <form onSubmit={handleSubmit} className="space-y-4 p-4 text-black">
+
         {error && (
-        <div className="flex items-center gap-2 p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex gap-2 p-3 text-red-700 bg-red-50 border rounded">
             <AlertCircle size={16} />
-            <span>{error}</span>
+            {error}
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Order ID *</label>
+          <label className="font-bold">Order ID</label>
           <input
             type="number"
+            placeholder="Order ID"
             value={orderId ?? ""}
             onChange={(e) => setOrderId(Number(e.target.value))}
-            placeholder="Ví dụ: 1, 2, 3..."
-            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
-            required
+            className="w-full border rounded px-3 h-10"
           />
         </div>
 
-        <div className="border rounded-lg p-3 space-y-3">
-          <p className="text-sm font-semibold">Chọn sản phẩm</p>
+        <div className="border rounded p-3 space-y-3">
+          <p className="font-semibold text-sm">Chọn sản phẩm</p>
 
           {orderItems.map((item) => (
-            <div key={item.id} className="flex gap-2 items-center text-black">
+            <div key={item.id} className="flex gap-2 items-center">
+
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.item?.name}</p>
                 <p className="text-xs text-gray-500">
-                  Còn lại: {item.remaining_quantity}
+                  Remaining: {item.remaining_quantity}
                 </p>
               </div>
 
-              {/* Quantity */}
               <input
                 type="number"
                 min={0}
                 max={item.remaining_quantity}
-                className="w-20 border rounded px-2 h-9 text-black"
+                className="w-20 border rounded px-2 h-9"
                 onChange={(e) => {
                   const qty = Number(e.target.value);
 
                   setSelectedItems((prev) => {
-                    const existing = prev.find(i => i.order_item_id === item.id);
-                    const filtered = prev.filter(i => i.order_item_id !== item.id);
+                    const filtered = prev.filter(
+                      (i) => i.order_item_id !== item.id
+                    );
 
                     if (qty > 0) {
                       return [
@@ -117,8 +163,8 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
                         {
                           order_item_id: item.id,
                           quantity_shipped: qty,
-                          batch_id: existing?.batch_id ?? null
-                        }
+                          batch_id: null,
+                        },
                       ];
                     }
 
@@ -127,75 +173,78 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess}: any) 
                 }}
               />
 
-              {/* Batch ID */}
-              <input
-                type="text"
-                placeholder="Batch ID (optional)"
-                className="w-32 border rounded px-2 h-9 text-black"
+              <select
+                className="w-40 border rounded px-2 h-9"
                 onChange={(e) => {
-                  const batch = e.target.value || null;
+                  const batchId = Number(e.target.value);
 
-                  setSelectedItems((prev) => {
-                    const existing = prev.find(i => i.order_item_id === item.id);
-                    if (!existing) return prev;
-
-                    return prev.map(i =>
+                  setSelectedItems((prev) =>
+                    prev.map((i) =>
                       i.order_item_id === item.id
-                        ? { ...i, batch_id: batch }
+                        ? { ...i, batch_id: batchId }
                         : i
-                    );
-                  });
+                    )
+                  );
                 }}
-              />
-            </div>
+              >
+                <option value="">Select batch</option>
 
+                {(batches[item.item?.id] || []).map((batch) => (
+                  <option
+                    key={batch.id}
+                    value={batch.id}
+                    disabled={batch.current_quantity <= 0}
+                  >
+                    {batch.batch_code} (Remaining: {batch.current_quantity})
+                  </option>
+                ))}
+              </select>
+
+            </div>
           ))}
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Tên tài xế</label>
+          <label className="font-bold">Driver Name</label>
           <input
-            type="text"
+            placeholder="Enter driver name"
             value={driverName}
             onChange={(e) => setDriverName(e.target.value)}
-            placeholder="Nguyễn Văn A..."
-            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full border rounded px-3 h-10"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Số điện thoại</label>
+          <label className="font-bold">Driver Phone</label>
           <input
-            type="text"
+            placeholder="Enter driver phone"
             value={driverPhone}
             onChange={(e) => setDriverPhone(e.target.value)}
-            placeholder="090..."
-            className="w-full h-11 border rounded-lg px-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full border rounded px-3 h-10"
           />
         </div>
+
         <div>
-          <label className="block text-sm font-bold text-gray-700 mb-1">Ghi chú</label>
+          <label className="font-bold">Notes</label>
           <textarea
+            placeholder="Enter notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ghi chú giao hàng..."
-            className="w-full h-24 border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full border rounded px-3 py-2"
           />
         </div>
 
-        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
-          <p className="text-xs text-blue-600 font-medium">
-            Hệ thống sẽ tự động kiểm tra tính hợp lệ của đơn hàng trước khi tạo.
-          </p>
-        </div>
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button type="button" onClick={onClose}>
+            Cancel
+          </Button>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="secondary" onClick={onClose}>Hủy</Button>
-          <Button type="submit" loading={isLoading} disabled={!orderId} className="bg-blue-600 text-white px-6">
-            Xác nhận
+          <Button type="submit" loading={isLoading}>
+            Create Shipment
           </Button>
         </div>
+
       </form>
-    </div>
     </Modal>
   );
 }

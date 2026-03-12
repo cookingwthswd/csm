@@ -21,42 +21,59 @@ export default function InventoryDetailPage() {
   }, []);
 
   return (
-    <div className="p-6">
 
-      <h1 className="text-xl font-bold mb-4">
+    <div className="p-8 max-w-6xl mx-auto text-black">
+
+      <h1 className="text-3xl font-bold mb-6">
         Inventory Detail
       </h1>
 
-      <table className="w-full border">
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
 
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Min</th>
-            <th>Max</th>
-          </tr>
-        </thead>
+        <table className="w-full text-sm">
 
-        <tbody>
-
-          {data.map((i) => (
-
-            <tr key={i.id}>
-
-              <td>{i.items?.name}</td>
-              <td>{i.quantity}</td>
-              <td>{i.min_stock_level}</td>
-              <td>{i.max_stock_level}</td>
-
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="text-left px-6 py-3">Item</th>
+              <th className="text-left px-6 py-3">Quantity</th>
+              <th className="text-left px-6 py-3">Min</th>
+              <th className="text-left px-6 py-3">Max</th>
             </tr>
+          </thead>
 
-          ))}
+          <tbody>
 
-        </tbody>
+            {data.map((i) => (
 
-      </table>
+              <tr key={i.id} className="border-t">
+
+                <td className="px-6 py-3 font-medium">
+                  {i.items?.name}
+                </td>
+
+                <td className="px-6 py-3 font-semibold">
+                  {i.quantity}
+                </td>
+
+                <td className="px-6 py-3 text-gray-600">
+                  {i.min_stock_level}
+                </td>
+
+                <td className="px-6 py-3 text-gray-600">
+                  {i.max_stock_level}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
 
     </div>
+
   );
 }

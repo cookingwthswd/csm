@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
- 
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -31,34 +31,58 @@ export default function BatchDetailPage() {
   if (!batch) return null;
 
   return (
-    <div className="p-6 space-y-6">
 
-      <div>
+    <div className="p-8 max-w-6xl mx-auto space-y-6 text-black">
 
-        <h1 className="text-xl font-bold">
+      {/* Batch Info */}
+
+      <div className="bg-white rounded-xl shadow border p-6">
+
+        <h1 className="text-2xl font-bold mb-4">
           Batch {batch.batch_code}
         </h1>
 
-        <p>Item: {batch.items?.name}</p>
-        <p>Expiry: {batch.expiry_date}</p>
-        <p>Quantity: {batch.current_quantity}</p>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+
+          <div>
+            <span className="text-gray-500">Item</span>
+            <p className="font-medium">{batch.items?.name}</p>
+          </div>
+
+          <div>
+            <span className="text-gray-500">Expiry Date</span>
+            <p className="font-medium">
+              {new Date(batch.expiry_date).toLocaleDateString()}
+            </p>
+          </div>
+
+          <div>
+            <span className="text-gray-500">Current Quantity</span>
+            <p className="font-semibold text-lg">
+              {batch.current_quantity}
+            </p>
+          </div>
+
+        </div>
 
       </div>
 
-      <div>
+      {/* Transactions */}
 
-        <h2 className="font-bold mb-2">
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
+
+        <div className="px-6 py-4 border-b font-semibold">
           Transaction History
-        </h2>
+        </div>
 
-        <table className="w-full border">
+        <table className="w-full text-sm">
 
-          <thead>
+          <thead className="bg-gray-50 text-gray-600">
             <tr>
-              <th>Store</th>
-              <th>Change</th>
-              <th>Type</th>
-              <th>Date</th>
+              <th className="text-left px-6 py-3">Store</th>
+              <th className="text-left px-6 py-3">Change</th>
+              <th className="text-left px-6 py-3">Type</th>
+              <th className="text-left px-6 py-3">Date</th>
             </tr>
           </thead>
 
@@ -66,12 +90,21 @@ export default function BatchDetailPage() {
 
             {transactions.map((t) => (
 
-              <tr key={t.id}>
+              <tr key={t.id} className="border-t">
 
-                <td>{t.stores?.name}</td>
-                <td>{t.quantity_change}</td>
-                <td>{t.transaction_type}</td>
-                <td>{new Date(t.created_at).toLocaleString()}</td>
+                <td className="px-6 py-3">{t.stores?.name}</td>
+
+                <td className="px-6 py-3 font-semibold">
+                  {t.quantity_change}
+                </td>
+
+                <td className="px-6 py-3 capitalize">
+                  {t.transaction_type}
+                </td>
+
+                <td className="px-6 py-3">
+                  {new Date(t.created_at).toLocaleString()}
+                </td>
 
               </tr>
 
@@ -84,5 +117,6 @@ export default function BatchDetailPage() {
       </div>
 
     </div>
+
   );
 }

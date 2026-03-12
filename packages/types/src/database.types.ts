@@ -830,7 +830,16 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      inventory_store_summary: {
+        Row: {
+          last_updated: string | null;
+          store_id: number | null;
+          store_name: string | null;
+          total_items: number | null;
+          total_quantity: number | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       custom_access_token_hook: { Args: { event: Json }; Returns: Json };

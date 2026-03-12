@@ -1,14 +1,16 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect, useState } from "react";
-import { inventoriesApi } from "@/lib/api/inventories";
+import {
+  inventoriesApi,
+  type InventorySummaryRecord,
+} from "@/lib/api/inventories";
 import { useRouter } from "next/navigation";
 
 export default function InventoryPage() {
 
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<InventorySummaryRecord[]>([]);
   const router = useRouter();
 
   const load = async () => {
@@ -21,46 +23,65 @@ export default function InventoryPage() {
   }, []);
 
   return (
-    <div className="p-6">
 
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="p-8 max-w-6xl mx-auto text-black">
+
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Inventory
       </h1>
 
-      <table className="w-full border">
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
 
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>Item</th>
-            <th>Quantity</th>
-            <th>Min</th>
-            <th>Max</th>
-          </tr>
-        </thead>
+        <table className="w-full text-sm">
 
-        <tbody>
-
-          {data.map((i) => (
-
-            <tr
-              key={i.id}
-              className="cursor-pointer hover:bg-gray-100"
-              onClick={() => router.push(`/dashboard/inventories/${i.store_id}`)}
-            >
-              <td>{i.stores?.name}</td>
-              <td>{i.items?.name}</td>
-              <td>{i.quantity}</td>
-              <td>{i.min_stock_level}</td>
-              <td>{i.max_stock_level}</td>
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="text-left px-6 py-3">Store</th>
+              <th className="text-left px-6 py-3">Total Items</th>
+              <th className="text-left px-6 py-3">Total Quantity</th>
+              <th className="text-left px-6 py-3">Last Updated</th>
             </tr>
+          </thead>
 
-          ))}
+          <tbody>
 
-        </tbody>
+            {data.map((i) => (
 
-      </table>
+              <tr
+                key={i.store_id}
+                className="border-t hover:bg-gray-50 cursor-pointer transition"
+                onClick={() => router.push(`/dashboard/inventories/${i.store_id}`)}
+              >
+
+                <td className="px-6 py-3 font-medium">
+                  {i.store_name}
+                </td>
+
+                <td className="px-6 py-3">
+                  {i.total_items}
+                </td>
+
+                <td className="px-6 py-3 font-semibold">
+                  {i.total_quantity}
+                </td>
+
+                <td className="px-6 py-3 text-gray-500">
+                  {i.last_updated
+                    ? new Date(i.last_updated).toLocaleString()
+                    : "-"}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
 
     </div>
+
   );
 }

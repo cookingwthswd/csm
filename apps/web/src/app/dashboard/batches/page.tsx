@@ -9,11 +9,13 @@ import { useRouter } from "next/navigation";
 export default function BatchesPage() {
 
   const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   const load = async () => {
     const res = await batchesApi.getBatches();
     setData(res);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -21,45 +23,68 @@ export default function BatchesPage() {
   }, []);
 
   return (
-    <div className="p-6">
 
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="p-8 max-w-6xl mx-auto text-black">
+
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Batches
       </h1>
 
-      <table className="w-full border">
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
 
-        <thead>
-          <tr>
-            <th>Batch Code</th>
-            <th>Item</th>
-            <th>Expiry</th>
-            <th>Current Qty</th>
-          </tr>
-        </thead>
+        <table className="w-full text-sm">
 
-        <tbody>
-
-          {data.map((b) => (
-
-            <tr
-              key={b.id}
-              className="cursor-pointer hover:bg-gray-100"
-              onClick={() => router.push(`/dashboard/batches/${b.id}`)}
-            >
-
-              <td>{b.batch_code}</td>
-              <td>{b.items?.name}</td>
-              <td>{b.expiry_date}</td>
-              <td>{b.current_quantity}</td>
-
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="text-left px-6 py-3">Batch Code</th>
+              <th className="text-left px-6 py-3">Item</th>
+              <th className="text-left px-6 py-3">Expiry</th>
+              <th className="text-left px-6 py-3">Current Qty</th>
             </tr>
+          </thead>
 
-          ))}
+          <tbody>
 
-        </tbody>
+            {loading && (
+              <tr>
+                <td colSpan={4} className="text-center py-6">
+                  Loading batches...
+                </td>
+              </tr>
+            )}
 
-      </table>
+            {!loading && data.length === 0 && (
+              <tr>
+                <td colSpan={4} className="text-center py-6 text-gray-500">
+                  No batches found
+                </td>
+              </tr>
+            )}
+
+            {data.map((b) => (
+
+              <tr
+                key={b.id}
+                className="border-t hover:bg-gray-50 cursor-pointer transition"
+                onClick={() => router.push(`/dashboard/batches/${b.id}`)}
+              >
+                <td className="px-6 py-3 font-medium">{b.batch_code}</td>
+                <td className="px-6 py-3">{b.items?.name}</td>
+                <td className="px-6 py-3">
+                  {new Date(b.expiry_date).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-3 font-semibold">
+                  {b.current_quantity}
+                </td>
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
 
     </div>
   );

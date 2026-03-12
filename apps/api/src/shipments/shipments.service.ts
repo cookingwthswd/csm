@@ -563,8 +563,7 @@ export class ShipmentsService {
   }
 
   private async processDelivered(shipmentId: number) {
-
-    const { data: shipment } = await this.supabase
+    const { data: shipment, error: shipmentError } = await this.supabase
       .from('shipments')
       .select(`
         id,
@@ -574,12 +573,17 @@ export class ShipmentsService {
       .eq('id', shipmentId)
       .single();
 
-    const storeId = shipment?.orders?.store_id;
-    if (!storeId) {
-      throw new BadRequestException('Shipment is missing store information');
+    if (shipmentError || !shipment) {
+      throw new NotFoundException("Shipment not found");
     }
 
-    const { data: items } = await this.supabase
+    const storeId = shipment.orders?.store_id;
+
+    if (!storeId) {
+      throw new BadRequestException("Shipment is missing store information");
+    }
+
+    const { data: items, error: itemsError } = await this.supabase
       .from('shipment_items')
       .select(`
         id,
@@ -591,66 +595,87 @@ export class ShipmentsService {
       `)
       .eq('shipment_id', shipmentId);
 
-    for (const item of items ?? []) {
+    if (itemsError) {
+      throw new BadRequestException("Failed to load shipment items");
+    }
+
+    if (!items || items.length === 0) {
+      return;
+    }
+
+    for (const item of items) {
 
       const itemId = item.order_items?.item_id;
-      if (!itemId || !item.batch_id) {
-        continue;
-      }
 
-      const { data: batch } = await this.supabase
-        .from('batches')
-        .select('id, current_quantity')
-        .eq('id', item.batch_id)
+      if (!itemId || !item.batch_id) continue;
+
+      const { data: batch, error: batchError } = await this.supabase
+        .from("batches")
+        .select("id, current_quantity")
+        .eq("id", item.batch_id)
         .single();
 
-      if (!batch) {
+      if (batchError || !batch) {
         throw new NotFoundException(`Batch ${item.batch_id} not found`);
       }
 
-      const nextQuantity = Math.max(batch.current_quantity - item.quantity_shipped, 0);
+      const nextQuantity = batch.current_quantity - item.quantity_shipped;
 
       await this.supabase
-        .from('batches')
-        .update({ current_quantity: nextQuantity })
-        .eq('id', item.batch_id);
+        .from("batches")
+        .update({
+          current_quantity: nextQuantity
+        })
+        .eq("id", item.batch_id);
 
       const { data: inv } = await this.supabase
-        .from('inventory')
-        .select('*')
-        .eq('store_id', storeId)
-        .eq('item_id', itemId)
+        .from("inventory")
+        .select("id, quantity")
+        .eq("store_id", storeId)
+        .eq("item_id", itemId)
         .maybeSingle();
 
       if (inv) {
+
         await this.supabase
-          .from('inventory')
+          .from("inventory")
           .update({
-            quantity: inv.quantity + item.quantity_shipped
+            quantity: inv.quantity + item.quantity_shipped,
+            last_updated: new Date().toISOString()
           })
-          .eq('id', inv.id);
+          .eq("id", inv.id);
+
       } else {
+
         await this.supabase
-          .from('inventory')
+          .from("inventory")
           .insert({
             store_id: storeId,
             item_id: itemId,
-            quantity: item.quantity_shipped
+            quantity: item.quantity_shipped,
+            last_updated: new Date().toISOString()
           });
+
       }
 
-      await this.supabase
-        .from('inventory_transactions')
+      const { error: txError } = await this.supabase
+        .from("inventory_transactions")
         .insert({
           store_id: storeId,
           item_id: itemId,
           batch_id: item.batch_id,
           quantity_change: item.quantity_shipped,
-          transaction_type: "shipment_in",
+          transaction_type: "import",
           reference_type: "shipment",
-          reference_id: shipmentId
+          reference_id: shipmentId,
+          note: "Shipment delivered",
+          created_at: new Date().toISOString()
         });
 
+      if (txError) {
+        console.error("Insert transaction error:", txError);
+        throw new BadRequestException(txError.message);
+      }
     }
   }
 }

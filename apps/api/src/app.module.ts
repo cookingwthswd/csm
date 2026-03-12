@@ -11,7 +11,6 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
-import { InventoryModule } from './inventory/inventory.module';
 
 /**
  * AppModule - Root Module
@@ -44,6 +43,11 @@ import { InventoryModule } from './inventory/inventory.module';
     ShipmentsModule, // Shipments module
     InventoryModule, // Inventory & stock management
     ReportsModule, // Analytics & dashboard reports
+    ProductionModule, // Production plans and batches
+    RecipesModule, // Recipes for products
+    InventoriesModule, // Inventory management
+    BatchesModule, // Batch management
+    NotificationsModule, // Notifications & settings
   ],
   controllers: [AppController],
   providers: [AppService],

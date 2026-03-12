@@ -3,13 +3,12 @@
 export * from "./database.types.ts";
 
 // Base types
-export * from "./common.ts";
-export * from "./auth.ts";
-export * from "./order.ts";
-export * from "./category.ts";
-export * from "./store.ts";
-export * from "./product.ts";
-export * from "./shipment.ts";
-export * from "./shipment-item.ts";
-export * from "./report.ts";
-export * from "./inventory.ts";
+export * from './common';
+export * from './auth';
+export * from './order';
+export * from './category';
+export * from './store';
+export * from './product';
+export * from "./shipment";
+export * from "./shipment-item";
+export * from './report';

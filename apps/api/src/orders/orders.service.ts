@@ -26,6 +26,8 @@ import {
 } from './dto/order.dto';
 import { UserRoleEnum } from 'src/users/dto/user.dto';
 import { AuthUser } from 'src/auth';
+import { OrderFactory, OrderItemFactory } from './factories';
+import { NotificationsService } from '../notifications/notifications.service';
 
 /**
  * Orders Service - Business Logic Layer
@@ -44,9 +46,13 @@ import { AuthUser } from 'src/auth';
 export class OrdersService {
   private supabase: SupabaseClient<Database>;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly notifications: NotificationsService,
+    private orderFactory: OrderFactory,
+    private orderItemFactory: OrderItemFactory,
+  ) {
     // Khởi tạo Supabase client với service role key
-    // Service role key có full access, bypass RLS
     this.supabase = createClient<Database>(
       this.configService.getOrThrow('SUPABASE_URL'),
       this.configService.getOrThrow('SUPABASE_SERVICE_ROLE_KEY'),
@@ -92,7 +98,8 @@ export class OrdersService {
           items ( name, type )
         ),
         stores ( name ),
-        users:users!created_by ( full_name, role )
+        users:users!created_by ( full_name, role ),
+        confirmer:users!confirmed_by ( full_name )
   `,
         { count: 'exact' },
       )
@@ -137,7 +144,8 @@ export class OrdersService {
           items ( name, type )
         ),
         stores ( name ),
-        users:users!created_by ( full_name, role )
+        users:users!created_by ( full_name, role ),
+        confirmer:users!confirmed_by ( full_name )
       `,
       )
       .eq('id', id);
@@ -156,26 +164,20 @@ export class OrdersService {
       throw new NotFoundException(`Order #${id} not found`);
     }
 
-    console.log(data);
-
     return this.transformOrder(data as OrderWithRelations);
   }
 
   /**
    * Tạo order mới
    *
-   * FLOW:
-   * 1. Generate order code
+   * FLOW (using Factory Method Pattern):
+   * 1. Use OrderFactory to create order data
    * 2. Insert order record
-   * 3. Insert order items
+   * 3. Use OrderItemFactory to create order items
    * 4. Return complete order
    */
   async create(dto: CreateOrderDto, user: AuthUser) {
     console.log(dto);
-    const orderCode = `ORD-${new Date()
-      .toISOString()
-      .slice(0, 10)
-      .replace(/-/g, '')}-${Date.now().toString().slice(-5)}`;
 
     if (
       (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
@@ -186,17 +188,11 @@ export class OrdersService {
       );
     }
 
-    // 1️⃣ Create order (temporary total_amount = 0)
+    // 1️⃣ Create order using factory
+    const orderData = this.orderFactory.createOrderData(dto, user);
     const { data: order, error: orderError } = await this.supabase
       .from('orders')
-      .insert({
-        store_id: dto.storeId,
-        order_code: orderCode,
-        status: 'pending',
-        notes: dto.notes,
-        created_by: user.id,
-        total_amount: 0,
-      })
+      .insert(orderData)
       .select()
       .single();
 
@@ -206,7 +202,6 @@ export class OrdersService {
 
     // 2️⃣ Fetch current prices
     const itemIds = dto.items.map((i) => i.itemId);
-
     const { data: dbItems, error: itemsFetchError } = await this.supabase
       .from('items')
       .select('id, current_price')
@@ -217,32 +212,17 @@ export class OrdersService {
     }
 
     const priceMap = new Map(
-      dbItems.map((item) => [item.id, item.current_price]),
+      dbItems
+        .filter((item) => item.current_price !== null)
+        .map((item) => [item.id, item.current_price as number]),
     );
 
-    // 3️⃣ Build order items + calculate total
-    let totalAmount = 0;
-
-    const orderItems = dto.items.map((item) => {
-      const unitPrice = priceMap.get(item.itemId);
-
-      if (unitPrice == null) {
-        throw new InternalServerErrorException(
-          `Price not found for item ${item.itemId}`,
-        );
-      }
-
-      const lineTotal = unitPrice * item.quantity;
-      totalAmount += lineTotal;
-
-      return {
-        order_id: order.id,
-        item_id: item.itemId,
-        notes: item.notes,
-        quantity_ordered: item.quantity,
-        unit_price: unitPrice,
-      };
-    });
+    // 3️⃣ Create order items using factory
+    const { orderItems, totalAmount } = this.orderItemFactory.createOrderItems(
+      order.id,
+      dto.items,
+      priceMap,
+    );
 
     // 4️⃣ Insert order items
     const { error: itemsError } = await this.supabase
@@ -262,15 +242,21 @@ export class OrdersService {
       this.handleError(totalUpdateError, 'Failed to update order total');
 
     // 6️⃣ Return full order
-    return this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
+    const result = await this.findOne(order.id, user.storeId, user.role as UserRoleEnum);
+
+    // 7️⃣ Notify: order created
+    this.notifications.notifyOrderCreated(user.id, order.id, `Store #${dto.storeId}`).catch(() => {});
+
+    return result;
   }
 
   /**
    * Update order
    *
-   * FLOW:
+   * FLOW (using Factory Method Pattern):
    * 1. Fetch order & validate status
    * 2. Only pending orders can be edited
+   * 3. Use OrderItemFactory to rebuild items
    */
   async update(id: number, dto: UpdateOrderDto, user: AuthUser) {
     console.log(dto);
@@ -311,7 +297,6 @@ export class OrdersService {
 
     // 2️⃣ Fetch current prices
     const itemIds = dto.items.map((i) => i.itemId);
-
     const { data: dbItems, error: itemsFetchError } = await this.supabase
       .from('items')
       .select('id, current_price')
@@ -322,32 +307,17 @@ export class OrdersService {
     }
 
     const priceMap = new Map(
-      dbItems.map((item) => [item.id, item.current_price]),
+      dbItems
+        .filter((item) => item.current_price !== null)
+        .map((item) => [item.id, item.current_price as number]),
     );
 
-    // 3️⃣ Rebuild order items + total
-    let totalAmount = 0;
-
-    const orderItems = dto.items.map((item) => {
-      const unitPrice = priceMap.get(item.itemId);
-
-      if (unitPrice == null) {
-        throw new InternalServerErrorException(
-          `Price not found for item ${item.itemId}`,
-        );
-      }
-
-      const lineTotal = unitPrice * item.quantity;
-      totalAmount += lineTotal;
-
-      return {
-        order_id: id,
-        item_id: item.itemId,
-        notes: item.notes,
-        quantity_ordered: item.quantity,
-        unit_price: unitPrice,
-      };
-    });
+    // 3️⃣ Rebuild order items using factory
+    const { orderItems, totalAmount } = this.orderItemFactory.createOrderItems(
+      id,
+      dto.items,
+      priceMap,
+    );
 
     // 4️⃣ Delete old items
     const { error: deleteError } = await this.supabase
@@ -390,19 +360,33 @@ export class OrdersService {
    *                                                                    ↘ cancelled
    */
   async updateStatus(id: number, dto: UpdateOrderStatusDto, user: AuthUser) {
+    // Prepare update data
+    const updateData: any = {
+      status: dto.status,
+      notes: dto.notes,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Set confirmed_by when status changes (except pending and cancelled)
+    if (dto.status !== 'pending' && dto.status !== 'cancelled') {
+      updateData.confirmed_by = user.id;
+    }
+
     const { data, error } = await this.supabase
       .from('orders')
-      .update({
-        status: dto.status,
-        notes: dto.notes,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
     if (error || !data) {
       throw new NotFoundException(`Order #${id} not found`);
+    }
+
+    // Notify: order status changed
+    const createdBy = data.created_by;
+    if (createdBy && createdBy !== user.id) {
+      this.notifications.notifyOrderStatusChanged(createdBy, id, dto.status).catch(() => {});
     }
 
     return this.findOne(id, null, user.role as UserRoleEnum);
@@ -414,7 +398,7 @@ export class OrdersService {
       .select(`
         id,
         quantity_ordered,
-        item:item_id(name),
+        item:item_id(id, name),
         shipment_items(
           quantity_shipped,
           shipments(status)
@@ -470,10 +454,12 @@ export class OrdersService {
   private transformOrder(order: OrderWithRelations) {
     return {
       id: order.id,
+      chainId: 1, // Default chain ID since it's not in the database
       storeId: order.store_id,
       storeName: order.stores?.name,
       orderCode: order.order_code,
       status: order.status,
+      requestedDate: order.created_at, // Use created_at as requested_date
       deliveryDate: order.delivery_date,
       totalAmount: order.total_amount,
       notes: order.notes,
@@ -490,7 +476,149 @@ export class OrdersService {
       updatedAt: order.updated_at,
       createdBy: order.users.full_name || '',
       creatorRole: order.users.role,
+      approvedBy: order.confirmer?.full_name || null,
+      review: (order as any).review || null,
+      rating: (order as any).rating || null,
     };
+  }
+
+  /**
+   * Confirm delivery - Updates both order and shipment status to 'delivered'
+   * Optionally adds review and rating
+   */
+  async confirmDelivery(
+    orderId: number,
+    dto: { review?: string; rating?: number },
+    user: AuthUser,
+  ) {
+    // 1. Fetch order and verify it's in shipping status
+    const { data: order, error: fetchError } = await this.supabase
+      .from('orders')
+      .select('id, status, store_id')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    if (order.status !== 'shipping') {
+      throw new BadRequestException(
+        'Only orders in shipping status can be confirmed for delivery',
+      );
+    }
+
+    // 2. Verify user has access (store_staff can only confirm their store's orders)
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      user.storeId !== order.store_id
+    ) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // 3. Update order status to delivered with optional review
+    // Automatically set to delivered if review is provided
+    const now = new Date().toISOString();
+    const updateData: any = {
+      status: 'delivered',
+      updated_at: now,
+      confirmed_by: user.id, // Set confirmed_by when confirming delivery
+    };
+
+    // Set delivery_date when review is added
+    if (dto.review) {
+      updateData.review = dto.review;
+      updateData.delivery_date = now;
+    }
+
+    if (dto.rating) {
+      updateData.rating = dto.rating;
+    }
+
+    const { error: orderUpdateError } = await this.supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId);
+
+    if (orderUpdateError) {
+      this.handleError(orderUpdateError, 'Failed to update order status');
+    }
+
+    // 4. Update shipment status to delivered
+    const { error: shipmentUpdateError } = await this.supabase
+      .from('shipments')
+      .update({
+        status: 'delivered',
+        delivered_date: now,
+        updated_at: now,
+      })
+      .eq('order_id', orderId);
+
+    if (shipmentUpdateError) {
+      this.handleError(
+        shipmentUpdateError,
+        'Failed to update shipment status',
+      );
+    }
+
+    // 5. Return updated order
+    return this.findOne(orderId, user.storeId, user.role as UserRoleEnum);
+  }
+
+  /**
+   * Add review to delivered order
+   */
+  async addReview(
+    orderId: number,
+    dto: { review: string; rating: number },
+    user: AuthUser,
+  ) {
+    // 1. Fetch order and verify it's delivered
+    const { data: order, error: fetchError } = await this.supabase
+      .from('orders')
+      .select('id, status, store_id, delivery_date')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchError || !order) {
+      throw new NotFoundException(`Order #${orderId} not found`);
+    }
+
+    if (order.status !== 'delivered') {
+      throw new BadRequestException('Only delivered orders can be reviewed');
+    }
+
+    // 2. Verify user has access
+    if (
+      (user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF &&
+      user.storeId !== order.store_id
+    ) {
+      throw new ForbiddenException('You do not have access to this order');
+    }
+
+    // 3. Update review and set delivery_date if not already set
+    const updateData: any = {
+      review: dto.review,
+      rating: dto.rating,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Set delivery_date if not already set
+    if (!order.delivery_date) {
+      updateData.delivery_date = new Date().toISOString();
+    }
+
+    const { error: updateError } = await this.supabase
+      .from('orders')
+      .update(updateData)
+      .eq('id', orderId);
+
+    if (updateError) {
+      this.handleError(updateError, 'Failed to add review');
+    }
+
+    // 4. Return updated order
+    return this.findOne(orderId, user.storeId, user.role as UserRoleEnum);
   }
 }
 
@@ -513,4 +641,5 @@ type OrderWithRelations = Database['public']['Tables']['orders']['Row'] & {
   order_items?: OrderItemWithRelations[];
   stores?: { name: string };
   users: { full_name: string; role: string };
+  confirmer?: { full_name: string } | null;
 };

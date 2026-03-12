@@ -25,8 +25,8 @@ export default function ShipmentDetailPage() {
         await shipmentItemsApi.getByShipmentId(
           Number(id)
         );
-      setShipment(s);
-      setItems(i.data);
+      setShipment(s as ShipmentResponse);
+      setItems(i.data as ShipmentItemResponse[]);
     };
     fetch();
   }, [id]);

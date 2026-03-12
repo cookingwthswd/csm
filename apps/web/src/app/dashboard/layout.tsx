@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { useAuth } from "@/providers/auth-provider";
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { useAuth } from '@/providers/auth-provider';
+import Link from 'next/link';
 
 /**
  * Dashboard Layout - Sidebar Navigation
@@ -16,6 +16,9 @@ export default function DashboardLayout({
   const { user, signOut, loading } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const router = useRouter();
+
+  // Subscribe to Supabase Realtime for new notifications
+  useNotificationRealtime(user?.id);
 
   async function handleSignOut() {
     if (signingOut) return;
@@ -87,6 +90,11 @@ export default function DashboardLayout({
           <NavLink href="/dashboard/inventory">Inventory</NavLink>
           <NavLink href="/dashboard/shipments">Shipments</NavLink>
           <NavLink href="/dashboard/users">Users</NavLink>
+          <NavLink href="/dashboard/production">Production</NavLink>
+          <NavLink href="/dashboard/recipes">Recipes</NavLink>
+          <NavLink href="/dashboard/inventories">Inventories</NavLink>
+          <NavLink href="/dashboard/batches">Batches</NavLink>
+          <NavLink href="/dashboard/notifications">Notifications</NavLink>
         </nav>
 
         <div className="border-t p-4">
@@ -107,7 +115,14 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 bg-white p-6">{children}</main>
+      <main className="relative flex-1 bg-white p-6">
+        {children}
+        {/* Notification Bell - fixed bottom right */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <NotificationBell />
+        </div>
+      </main>
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

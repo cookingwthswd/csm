@@ -10,6 +10,7 @@ import { Modal, Button, Input } from "@/components/ui";
 import { storesApi } from "@/lib/api/stores";
 import { productsApi } from "@/lib/api/products";
 import type { Store, Product, CreateOrderDto } from "@repo/types";
+import { useAuthStore } from "@/lib/stores/auth.store";
 
 interface AddOrderModalProps {
     isOpen: boolean;
@@ -24,12 +25,32 @@ export function AddOrderModal({
     onSubmit,
     isLoading = false,
 }: AddOrderModalProps) {
+    const { profile } = useAuthStore();
+
     /* ---------------- queries ---------------- */
-    const { data: stores } = useQuery<Store[]>({
+    const { data: allStores } = useQuery<Store[]>({
         queryKey: ["stores"],
         queryFn: () => storesApi.getAll(),
         enabled: isOpen,
     });
+
+    // Filter stores based on user role
+    const stores = useMemo(() => {
+        if (!allStores || !profile) return allStores;
+
+        // store_staff: only show their assigned store (franchise)
+        if (profile.role === 'store_staff' && profile.storeId) {
+            return allStores.filter(store => store.id === profile.storeId && store.type === 'franchise');
+        }
+
+        // ck_staff: only show central_kitchen stores
+        if (profile.role === 'ck_staff') {
+            return allStores.filter(store => store.type === 'central_kitchen');
+        }
+
+        // Other roles: show all stores
+        return allStores;
+    }, [allStores, profile]);
 
     const { data: products, isLoading: productsLoading } = useQuery<Product[]>({
         queryKey: ["products"],

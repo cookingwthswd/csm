@@ -11,6 +11,7 @@ import type {
   CreateOrderDto as UpdateOrderDto,
   OrderResponse,
 } from "@repo/types";
+import { useAuthStore } from "@/lib/stores/auth.store";
 
 interface UpdateOrderModalProps {
   isOpen: boolean;
@@ -33,12 +34,32 @@ export function UpdateOrderModal({
   onSubmit,
   isLoading = false,
 }: UpdateOrderModalProps) {
+  const { profile } = useAuthStore();
+
   /* ---------------- queries ---------------- */
-  const { data: stores } = useQuery<Store[]>({
+  const { data: allStores } = useQuery<Store[]>({
     queryKey: ["stores"],
     queryFn: () => storesApi.getAll(),
     enabled: isOpen,
   });
+
+  // Filter stores based on user role
+  const stores = useMemo(() => {
+    if (!allStores || !profile) return allStores;
+
+    // store_staff: only show their assigned store (franchise)
+    if (profile.role === 'store_staff' && profile.storeId) {
+      return allStores.filter(store => store.id === profile.storeId && store.type === 'franchise');
+    }
+
+    // ck_staff: only show central_kitchen stores
+    if (profile.role === 'ck_staff') {
+      return allStores.filter(store => store.type === 'central_kitchen');
+    }
+
+    // Other roles: show all stores
+    return allStores;
+  }, [allStores, profile]);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["products"],

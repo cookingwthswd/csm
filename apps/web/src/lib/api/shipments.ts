@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { api } from "./client";
 import type {
   ShipmentResponse,
@@ -18,6 +18,21 @@ export interface UpdateShipmentPayload {
   driver_phone?: string;
   notes?: string;
 };
+
+export interface ShipmentItemRecord {
+  id: number;
+  order_item_id: number;
+  batch_id: number | null;
+  quantity_shipped: number;
+  note?: string | null;
+}
+
+export interface ShipmentBatchRecord {
+  id: number;
+  batch_code: string;
+  current_quantity: number;
+  expiry_date: string | null;
+}
 
 
 /**
@@ -45,7 +60,7 @@ export const shipmentsApi = {
    * Get shipment by ID
    */
   getById: async (id: number) => {
-    return await api.get(`/shipments/${id}`);
+    return await api.get<ShipmentResponse>(`/shipments/${id}`);
   },
 
   /**
@@ -99,6 +114,8 @@ export const shipmentsApi = {
     ),
 
   getItems: (shipmentId: number) =>
-    api.get(`/shipments/${shipmentId}/items`),
+    api.get<ShipmentItemRecord[]>(`/shipments/${shipmentId}/items`),
 
+  getBatchesByItem: (itemId: number) =>
+    api.get<ShipmentBatchRecord[]>(`/shipments/batches/item/${itemId}`),
 };

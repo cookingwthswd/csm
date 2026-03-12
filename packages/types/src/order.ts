@@ -96,8 +96,11 @@ export const OrderResponse = z.object({
   updatedAt: z.string(),
   createdBy: z.string(),
   creatorRole: z.string(),
+  approvedBy: z.string().nullable(),
   deliveryDate: z.string().nullable(),
-  notes: z.string().nullable()
+  notes: z.string().nullable(),
+  review: z.string().nullable(),
+  rating: z.number().int().min(1).max(5).nullable(),
 });
 export type OrderResponse = z.infer<typeof OrderResponse>;
 
@@ -119,6 +122,18 @@ export const UpdateOrderStatusDto = z.object({
   notes: z.string().optional(),
 });
 export type UpdateOrderStatusDto = z.infer<typeof UpdateOrderStatusDto>;
+
+export const ConfirmDeliveryDto = z.object({
+  review: z.string().optional(),
+  rating: z.number().int().min(1).max(5).optional(),
+});
+export type ConfirmDeliveryDto = z.infer<typeof ConfirmDeliveryDto>;
+
+export const AddReviewDto = z.object({
+  review: z.string().min(1),
+  rating: z.number().int().min(1).max(5),
+});
+export type AddReviewDto = z.infer<typeof AddReviewDto>;
 
 export interface OrderItemWithRemaining {
   id: number;

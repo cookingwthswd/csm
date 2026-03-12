@@ -105,4 +105,10 @@ export const usersApi = {
    */
   deactivate: (id: string) =>
     api.delete<{ success: boolean; message: string }>(`/users/${id}`),
+
+  /**
+   * Reactivate user (admin only)
+   */
+  activate: (id: string) =>
+    api.put<{ success: boolean; message: string }>(`/users/${id}/activate`, {}),
 };

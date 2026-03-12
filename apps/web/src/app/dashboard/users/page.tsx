@@ -5,7 +5,11 @@ import { usersApi, type User, type CreateUserRequest } from '@/lib/api/users';
 import { storesApi } from '@/lib/api';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/providers';
-import { UserFormModal, RoleChangeModal, DeactivateModal } from './components';
+import {
+  UserFormModal,
+  RoleChangeModal,
+  DeactivateModal,
+} from './components';
 import type { Store } from '@repo/types';
 import type { UserRole } from '@/lib/stores/auth.store';
 
@@ -26,7 +30,7 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 export default function UsersPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,7 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [roleChangeUser, setRoleChangeUser] = useState<User | null>(null);
-  const [deactivateUser, setDeactivateUser] = useState<User | null>(null);
+  const [statusUser, setStatusUser] = useState<User | null>(null);
 
   useEffect(() => {
     loadData();
@@ -86,6 +90,23 @@ export default function UsersPage() {
   async function handleDeactivate(userId: string) {
     await usersApi.deactivate(userId);
     loadData();
+  }
+
+  async function handleActivate(userId: string) {
+    await usersApi.activate(userId);
+    loadData();
+  }
+
+  async function handleStatusChange(userId: string) {
+    const user = users.find((item) => item.id === userId);
+    if (!user) return;
+
+    if (user.isActive) {
+      await handleDeactivate(userId);
+      return;
+    }
+
+    await handleActivate(userId);
   }
 
   return (
@@ -144,13 +165,29 @@ export default function UsersPage() {
                     <span className={`rounded px-2 py-1 text-xs ${user.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {user.isActive ? 'Active' : 'Inactive'}
                     </span>
+                    {profile?.id === user.id && (
+                      <span className="ml-2 rounded bg-blue-50 px-2 py-1 text-xs text-blue-700">
+                        Current account
+                      </span>
+                    )}
                   </td>
                   <td className="p-3">
                     <button onClick={() => { setEditingUser(user); setIsFormOpen(true); }} className="mr-2 text-blue-600 hover:text-blue-800">Edit</button>
                     {isAdmin() && (
                       <>
                         <button onClick={() => setRoleChangeUser(user)} className="mr-2 text-purple-600 hover:text-purple-800">Role</button>
-                        <button onClick={() => setDeactivateUser(user)} className="text-red-600 hover:text-red-800">Deactivate</button>
+                        {profile?.id === user.id ? (
+                          <span className="text-sm text-gray-400">
+                            Cannot deactivate current account
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setStatusUser(user)}
+                            className={`mr-2 ${user.isActive ? 'text-orange-600 hover:text-orange-800' : 'text-green-600 hover:text-green-800'}`}
+                          >
+                            {user.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        )}
                       </>
                     )}
                   </td>
@@ -165,7 +202,7 @@ export default function UsersPage() {
       {/* Modals */}
       <UserFormModal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} onSubmit={handleFormSubmit} editingUser={editingUser} stores={stores} />
       <RoleChangeModal user={roleChangeUser} onClose={() => setRoleChangeUser(null)} onConfirm={handleRoleChange} />
-      <DeactivateModal user={deactivateUser} onClose={() => setDeactivateUser(null)} onConfirm={handleDeactivate} />
+      <DeactivateModal user={statusUser} onClose={() => setStatusUser(null)} onConfirm={handleStatusChange} />
     </div>
   );
 }

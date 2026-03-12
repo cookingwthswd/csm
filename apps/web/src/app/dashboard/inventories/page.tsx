@@ -23,44 +23,65 @@ export default function InventoryPage() {
   }, []);
 
   return (
-    <div className="p-6 text-black">
 
-      <h1 className="text-2xl font-bold mb-4">
+    <div className="p-8 max-w-6xl mx-auto text-black">
+
+      <h1 className="text-3xl font-bold mb-6 text-gray-800">
         Inventory
       </h1>
 
-      <table className="w-full border">
+      <div className="bg-white rounded-xl shadow border overflow-hidden">
 
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>Total Items</th>
-            <th>Total Quantity</th>
-            <th>Last Updated</th>
-          </tr>
-        </thead>
+        <table className="w-full text-sm">
 
-        <tbody>
-
-          {data.map((i) => (
-
-            <tr
-              key={i.store_id}
-              className="cursor-pointer hover:bg-gray-100"
-              onClick={() => router.push(`/dashboard/inventories/${i.store_id}`)}
-            >
-              <td>{i.store_name}</td>
-              <td>{i.total_items}</td>
-              <td>{i.total_quantity}</td>
-              <td>{i.last_updated ? new Date(i.last_updated).toLocaleString() : "-"}</td>
+          <thead className="bg-gray-50 text-gray-600">
+            <tr>
+              <th className="text-left px-6 py-3">Store</th>
+              <th className="text-left px-6 py-3">Total Items</th>
+              <th className="text-left px-6 py-3">Total Quantity</th>
+              <th className="text-left px-6 py-3">Last Updated</th>
             </tr>
+          </thead>
 
-          ))}
+          <tbody>
 
-        </tbody>
+            {data.map((i) => (
 
-      </table>
+              <tr
+                key={i.store_id}
+                className="border-t hover:bg-gray-50 cursor-pointer transition"
+                onClick={() => router.push(`/dashboard/inventories/${i.store_id}`)}
+              >
+
+                <td className="px-6 py-3 font-medium">
+                  {i.store_name}
+                </td>
+
+                <td className="px-6 py-3">
+                  {i.total_items}
+                </td>
+
+                <td className="px-6 py-3 font-semibold">
+                  {i.total_quantity}
+                </td>
+
+                <td className="px-6 py-3 text-gray-500">
+                  {i.last_updated
+                    ? new Date(i.last_updated).toLocaleString()
+                    : "-"}
+                </td>
+
+              </tr>
+
+            ))}
+
+          </tbody>
+
+        </table>
+
+      </div>
 
     </div>
+
   );
 }

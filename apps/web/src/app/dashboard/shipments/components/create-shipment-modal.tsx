@@ -28,7 +28,14 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
     try {
       const res = await shipmentsApi.getBatchesByItem(itemId);
 
-        setBatches(prev => ({ ...prev, [itemId]: res as any[] })); } catch { console.error("Failed to load batches"); }
+      setBatches((prev) => ({
+        ...prev,
+        [itemId]: res as any || [],
+      }));
+
+    } catch {
+      console.error("Failed to load batches");
+    }
   };
 
   useEffect(() => {
@@ -60,6 +67,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
     }
 
     for (const selected of selectedItems) {
+
       const orderItem = orderItems.find(
         (o) => o.id === selected.order_item_id
       );
@@ -78,14 +86,10 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
         return;
       }
 
-      if (!orderItem.batch_id) {
-        setError("Please select batch");
-        return;
-      }
-
     }
 
     try {
+
       setIsLoading(true);
 
       const shipment = await shipmentsApi.create({
@@ -100,8 +104,10 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
       }
 
       alert("Tạo vận đơn thành công!");
+
       onSuccess?.();
       onClose();
+
     } catch (err: any) {
       setError(err.message || "Tạo vận đơn thất bại");
     } finally {
@@ -111,6 +117,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Shipment">
+
       <form onSubmit={handleSubmit} className="space-y-4 p-4 text-black">
 
         {error && (
@@ -134,80 +141,104 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
         <div className="border rounded p-3 space-y-3">
           <p className="font-semibold text-sm">Chọn sản phẩm</p>
 
-          {orderItems.map((item) => (
-            <div key={item.id} className="flex gap-2 items-center">
+          {orderItems.map((item) => {
 
-              <div className="flex-1">
-                <p className="text-sm font-medium">{item.item?.name}</p>
-                <p className="text-xs text-gray-500">
-                  Remaining: {item.remaining_quantity}
-                </p>
-              </div>
+            const selected = selectedItems.find(
+              (i) => i.order_item_id === item.id
+            );
 
-              <input
-                type="number"
-                min={0}
-                max={item.remaining_quantity}
-                className="w-20 border rounded px-2 h-9"
-                onChange={(e) => {
-                  const qty = Number(e.target.value);
+            return (
 
-                  setSelectedItems((prev) => {
-                    const filtered = prev.filter(
-                      (i) => i.order_item_id !== item.id
+              <div key={item.id} className="flex gap-2 items-center">
+
+                <div className="flex-1">
+                  <p className="text-sm font-medium">{item.item?.name}</p>
+                  <p className="text-xs text-gray-500">
+                    Remaining: {item.remaining_quantity}
+                  </p>
+                </div>
+
+                <input
+                  type="number"
+                  min={0}
+                  max={item.remaining_quantity}
+                  value={selected?.quantity_shipped || ""}
+                  className="w-20 border rounded px-2 h-9"
+                  onChange={(e) => {
+
+                    const qty = Number(e.target.value);
+
+                    setSelectedItems((prev) => {
+
+                      const existing = prev.find(
+                        (i) => i.order_item_id === item.id
+                      );
+
+                      const filtered = prev.filter(
+                        (i) => i.order_item_id !== item.id
+                      );
+
+                      if (qty > 0) {
+                        return [
+                          ...filtered,
+                          {
+                            order_item_id: item.id,
+                            quantity_shipped: qty,
+                            batch_id: existing?.batch_id || null,
+                          },
+                        ];
+                      }
+
+                      return filtered;
+
+                    });
+
+                  }}
+                />
+
+                <select
+                  className="w-40 border rounded px-2 h-9"
+                  value={selected?.batch_id || ""}
+                  onChange={(e) => {
+
+                    const batchId = Number(e.target.value);
+
+                    setSelectedItems((prev) =>
+                      prev.map((i) =>
+                        i.order_item_id === item.id
+                          ? { ...i, batch_id: batchId }
+                          : i
+                      )
                     );
 
-                    if (qty > 0) {
-                      return [
-                        ...filtered,
-                        {
-                          order_item_id: item.id,
-                          quantity_shipped: qty,
-                          batch_id: null,
-                        },
-                      ];
-                    }
+                  }}
+                >
 
-                    return filtered;
-                  });
-                }}
-              />
+                  <option value="">Select batch</option>
 
-              <select
-                className="w-40 border rounded px-2 h-9"
-                onChange={(e) => {
-                  const batchId = Number(e.target.value);
+                  {(batches[item.item?.id] || []).map((batch) => (
+                    <option
+                      key={batch.id}
+                      value={batch.id}
+                      disabled={batch.current_quantity <= 0}
+                    >
+                      {batch.batch_code} (Remaining: {batch.current_quantity})
+                    </option>
+                  ))}
 
-                  setSelectedItems((prev) =>
-                    prev.map((i) =>
-                      i.order_item_id === item.id
-                        ? { ...i, batch_id: batchId }
-                        : i
-                    )
-                  );
-                }}
-              >
-                <option value="">Select batch</option>
+                </select>
 
-                {(batches[item.item?.id] || []).map((batch) => (
-                  <option
-                    key={batch.id}
-                    value={batch.id}
-                    disabled={batch.current_quantity <= 0}
-                  >
-                    {batch.batch_code} (Remaining: {batch.current_quantity})
-                  </option>
-                ))}
-              </select>
+              </div>
 
-            </div>
-          ))}
+            );
+
+          })}
+
         </div>
 
         <div>
           <label className="font-bold">Driver Name</label>
           <input
-            placeholder="Enter driver name"
             value={driverName}
             onChange={(e) => setDriverName(e.target.value)}
             className="w-full border rounded px-3 h-10"
@@ -217,7 +248,6 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
         <div>
           <label className="font-bold">Driver Phone</label>
           <input
-            placeholder="Enter driver phone"
             value={driverPhone}
             onChange={(e) => setDriverPhone(e.target.value)}
             className="w-full border rounded px-3 h-10"
@@ -227,7 +257,6 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
         <div>
           <label className="font-bold">Notes</label>
           <textarea
-            placeholder="Enter notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="w-full border rounded px-3 py-2"
@@ -245,6 +274,7 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
         </div>
 
       </form>
+
     </Modal>
   );
 }

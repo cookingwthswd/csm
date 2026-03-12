@@ -31,7 +31,7 @@ export default function BatchDetailPage() {
   if (!batch) return null;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 text-black">
 
       <div>
 

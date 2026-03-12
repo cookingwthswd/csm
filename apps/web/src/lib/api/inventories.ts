@@ -1,5 +1,13 @@
 import { api } from "./client";
 
+export interface InventorySummaryRecord {
+  store_id: number;
+  store_name: string;
+  total_items: number;
+  total_quantity: number;
+  last_updated: string;
+}
+
 export interface InventoryRecord {
   id: number;
   store_id: number;
@@ -62,7 +70,7 @@ export const inventoriesApi = {
    * Inventory list
    */
   getInventories: () =>
-    api.get<InventoryRecord[]>(`/inventories`),
+    api.get<InventorySummaryRecord[]>(`/inventories`),
 
   /**
    * Inventory detail

@@ -27,12 +27,8 @@ export class InventoriesService {
   async getInventories() {
 
     const { data, error } = await this.supabase
-      .from('inventory')
-      .select(`
-        *,
-        items(id,name),
-        stores(id,name)
-      `)
+      .from('inventory_store_summary')
+      .select('*')
       .order('last_updated', { ascending: false });
 
     if (error)

@@ -21,7 +21,7 @@ export default function InventoryDetailPage() {
   }, []);
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-black">
 
       <h1 className="text-xl font-bold mb-4">
         Inventory Detail

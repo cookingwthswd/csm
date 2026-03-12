@@ -23,6 +23,8 @@ import {
   CreateOrderDto,
   UpdateOrderDto,
   UpdateOrderStatusDto,
+  ConfirmDeliveryDto,
+  AddReviewDto,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { UserRoleEnum } from '../users/dto/user.dto';
@@ -219,17 +221,74 @@ export class OrdersController {
   @ApiResponse({ status: 200, description: 'Order updated' })
   @ApiResponse({ status: 404, description: 'Order not found' })
   @Roles(UserRoleEnum.ADMIN, UserRoleEnum.MANAGER, UserRoleEnum.STORE_STAFF)
+  @UseGuards(CheckStoreAccessGuard)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateOrderDto,
     @CurrentUser() user: AuthUser,
   ) {
-    console.log(dto);
     return this.ordersService.update(id, dto, user);
   }
 
   @Get(':id/items-with-remaining')
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.STORE_STAFF,
+  )
+  @UseGuards(CheckStoreAccessGuard)
   getOrderItemsWithRemaining(@Param('id', ParseIntPipe) orderId: number) {
     return this.ordersService.getOrderItemsWithRemaining(orderId);
+  }
+
+  /**
+   * POST /orders/:id/confirm-delivery
+   * Confirm delivery - updates order and shipment to 'delivered'
+   * Optionally adds review and rating
+   */
+  @Post(':id/confirm-delivery')
+  @ApiOperation({ summary: 'Confirm delivery and optionally add review' })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
+  @ApiResponse({ status: 200, description: 'Delivery confirmed' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.STORE_STAFF,
+    UserRoleEnum.COORDINATOR,
+  )
+  @UseGuards(CheckStoreAccessGuard)
+  confirmDelivery(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: ConfirmDeliveryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.ordersService.confirmDelivery(id, dto, user);
+  }
+
+  /**
+   * POST /orders/:id/review
+   * Add review to delivered order
+   */
+  @Post(':id/review')
+  @ApiOperation({ summary: 'Add review to delivered order' })
+  @ApiParam({ name: 'id', type: Number, description: 'Order ID' })
+  @ApiResponse({ status: 200, description: 'Review added' })
+  @ApiResponse({ status: 404, description: 'Order not found' })
+  @Roles(
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.STORE_STAFF,
+    UserRoleEnum.COORDINATOR,
+  )
+  @UseGuards(CheckStoreAccessGuard)
+  addReview(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddReviewDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.ordersService.addReview(id, dto, user);
   }
 }

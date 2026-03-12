@@ -191,6 +191,57 @@ export class UpdateOrderStatusDto {
   @IsString()
   notes?: string;
 }
+
+// ═══════════════════════════════════════════════════════════
+// CONFIRM DELIVERY & REVIEW
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * DTO to confirm delivery with optional review
+ */
+export class ConfirmDeliveryDto {
+  @ApiPropertyOptional({
+    description: 'Review text',
+    example: 'Great service!',
+  })
+  @IsOptional()
+  @IsString()
+  review?: string;
+
+  @ApiPropertyOptional({
+    description: 'Rating (1-5 stars)',
+    example: 5,
+    minimum: 1,
+    maximum: 5,
+  })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  rating?: number;
+}
+
+/**
+ * DTO to add review to order
+ */
+export class AddReviewDto {
+  @ApiProperty({
+    description: 'Review text',
+    example: 'Great service!',
+  })
+  @IsString()
+  review: string;
+
+  @ApiProperty({
+    description: 'Rating (1-5 stars)',
+    example: 5,
+    minimum: 1,
+    maximum: 5,
+  })
+  @IsInt()
+  @IsPositive()
+  rating: number;
+}
+
 // ═══════════════════════════════════════════════════════════
 // RESPONSE DTOs
 // ═══════════════════════════════════════════════════════════

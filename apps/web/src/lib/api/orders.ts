@@ -62,7 +62,7 @@ export const orderApi = {
      * Cancel order
      */
     cancel: (id: number) =>
-        api.delete<{ success: boolean; message: string }>(`/orders/${id}`),
+        api.put<{ success: boolean; message: string }>(`/orders/${id}/status`, { status: 'cancelled' }),
 
     /**
      * Add item to order

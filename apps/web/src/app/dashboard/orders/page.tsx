@@ -22,20 +22,47 @@ export default function OrdersPage() {
   const [paginationData, setPaginationData] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStore, setFilterStore] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<OrderStatus | null>(null);
+  const [sortNewestFirst, setSortNewestFirst] = useState(true);
 
   // Check if user is store_staff
   const isStoreStaff = profile?.role === 'store_staff';
   const isCkStaff = profile?.role === 'ck_staff';
   const canChangeStatus = profile?.role !== 'store_staff';
 
+  // Define valid status transitions
+  const getValidNextStatuses = (currentStatus: OrderStatus): OrderStatus[] => {
+    const transitions: Record<OrderStatus, OrderStatus[]> = {
+      'pending': ['approved', 'cancelled'],
+      'approved': ['processing'],
+      'processing': ['processed'],
+      'processed': ['shipping'],
+      'shipping': ['delivered'],
+      'delivered': [],
+      'cancelled': [],
+    };
+    return transitions[currentStatus] || [];
+  };
+
   // Filter status options for ck_staff (omit shipping and delivered)
-  const getAvailableStatuses = () => {
+  const getAvailableStatuses = (currentStatus?: OrderStatus) => {
+    let statuses = ORDER_STATUS_VALUES;
+    
     if (isCkStaff) {
-      return ORDER_STATUS_VALUES.filter(
+      statuses = statuses.filter(
         status => status !== ORDER_STATUS.SHIPPING && status !== ORDER_STATUS.DELIVERED
       );
     }
-    return ORDER_STATUS_VALUES;
+
+    // If currentStatus is provided, only return valid transitions
+    if (currentStatus) {
+      const validNextStatuses = getValidNextStatuses(currentStatus as OrderStatus);
+      return statuses.filter(status => validNextStatuses.includes(status as OrderStatus));
+    }
+
+    return statuses;
   };
 
   // Query for fetching orders - use different API based on role
@@ -44,7 +71,7 @@ export default function OrdersPage() {
     isLoading,
     error,
   } = useQuery<OrderResponseWithPagination>({
-    queryKey: ["orders", currentPage, pageSize, profile?.storeId, isStoreStaff],
+    queryKey: ["orders", currentPage, pageSize, profile?.storeId, isStoreStaff, searchQuery, filterStore, filterStatus, sortNewestFirst],
     queryFn: () => {
       if (isStoreStaff && profile?.storeId) {
         return orderApi.getAllByStoreId({ 
@@ -56,6 +83,41 @@ export default function OrdersPage() {
       return orderApi.getAll({ page: currentPage, limit: pageSize });
     },
   });
+
+  // Apply client-side filtering and sorting
+  const filteredAndSortedOrders = () => {
+    if (!orders) return [];
+
+    let filtered = [...orders];
+
+    // Filter by search query (order ID or store name)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(order =>
+        order.id.toString().includes(query) ||
+        (order.storeName || `Store ${order.storeId}`).toLowerCase().includes(query)
+      );
+    }
+
+    // Filter by store
+    if (filterStore) {
+      filtered = filtered.filter(order => order.storeId === filterStore);
+    }
+
+    // Filter by status
+    if (filterStatus) {
+      filtered = filtered.filter(order => order.status === filterStatus);
+    }
+
+    // Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return sortNewestFirst ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  };
 
   useEffect(() => {
     if (data && !isLoading) {
@@ -239,6 +301,79 @@ export default function OrdersPage() {
         )}
       </div>
 
+      {/* Filters */}
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        {/* Search */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+          <input
+            type="text"
+            placeholder="Search by Order ID or Store..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-500"
+          />
+        </div>
+
+        {/* Store Filter */}
+        {!isStoreStaff && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Store</label>
+            <select
+              value={filterStore || ""}
+              onChange={(e) => {
+                setFilterStore(e.target.value ? Number(e.target.value) : null);
+                setCurrentPage(1);
+              }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900"
+            >
+              <option value="">All Stores</option>
+              {orders && [...new Map(orders.map(o => [o.storeId, o])).values()].map(order => (
+                <option key={order.storeId} value={order.storeId}>
+                  {order.storeName || `Store ${order.storeId}`}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Status Filter */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select
+            value={filterStatus || ""}
+            onChange={(e) => {
+              setFilterStatus(e.target.value ? (e.target.value as OrderStatus) : null);
+              setCurrentPage(1);
+            }}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            <option value="">All Statuses</option>
+            {ORDER_STATUS_VALUES.map(status => (
+              <option key={status} value={status}>
+                {status.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sort */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Sort</label>
+          <select
+            value={sortNewestFirst ? "newest" : "oldest"}
+            onChange={(e) => setSortNewestFirst(e.target.value === "newest")}
+            className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+        </div>
+      </div>
+
       <div className="mt-6">
         <table className="w-full border-collapse">
           <thead>
@@ -253,7 +388,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders && !isLoading && orders.map((order) => (
+            {filteredAndSortedOrders().map((order) => (
               <tr key={order.id} className="border-b hover:bg-gray-50 text-black">
                 <td className="p-3 font-medium">
                   {order.id}
@@ -279,16 +414,19 @@ export default function OrdersPage() {
                     >
                       Details
                     </Button>
-                    {canChangeStatus && (
+                    {canChangeStatus && order.status !== ORDER_STATUS.PENDING && (
                       <select
                         value={order.status as OrderStatus}
                         onChange={(e) =>
                           handleStatusUpdate(order.id, e.target.value as OrderStatus)
                         }
-                        disabled={updateStatusMutation.isPending}
+                        disabled={updateStatusMutation.isPending || getValidNextStatuses(order.status as OrderStatus).length === 0}
                         className="rounded border px-2 py-1 text-sm"
                       >
-                        {getAvailableStatuses().map((status) => (
+                        <option value={order.status as OrderStatus}>
+                          {(order.status as OrderStatus).replace("_", " ")}
+                        </option>
+                        {getAvailableStatuses(order.status as OrderStatus).map((status) => (
                           <option key={status} value={status}>
                             {status.replace("_", " ")}
                           </option>
@@ -338,7 +476,7 @@ export default function OrdersPage() {
                 </td>
               </tr>
             ))}
-            {orders?.length === 0 && (
+            {filteredAndSortedOrders().length === 0 && (
               <tr>
                 <td colSpan={7} className="p-6 text-center text-gray-500">
                   No orders found

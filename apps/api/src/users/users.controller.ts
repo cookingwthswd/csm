@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -20,7 +21,10 @@ import {
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthUser } from '../auth/supabase.strategy';
-import { UsersService } from './users.service';
+import {
+  UsersService,
+  type UserStatusActionResponse,
+} from './users.service';
 import {
   CreateUserDto,
   UpdateUserDto,
@@ -141,7 +145,30 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User deactivated' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @Roles('admin')
-  deactivate(@Param('id', ParseUUIDPipe) id: string) {
+  deactivate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ): Promise<UserStatusActionResponse> {
+    if (user.id === id) {
+      throw new BadRequestException('Cannot deactivate your own account');
+    }
+
     return this.usersService.deactivate(id);
+  }
+
+  /**
+   * PUT /users/:id/activate - Reactivate user
+   * Admin only
+   */
+  @Put(':id/activate')
+  @ApiOperation({ summary: 'Reactivate user' })
+  @ApiParam({ name: 'id', type: String, description: 'User UUID' })
+  @ApiResponse({ status: 200, description: 'User activated' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @Roles('admin')
+  activate(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<UserStatusActionResponse> {
+    return this.usersService.activate(id);
   }
 }

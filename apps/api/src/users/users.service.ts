@@ -14,6 +14,11 @@ import {
 } from './dto/user.dto';
 import type { AuthUser } from '../auth/supabase.strategy';
 
+export interface UserStatusActionResponse {
+  success: true;
+  message: string;
+}
+
 /**
  * Users Service
  *
@@ -196,9 +201,13 @@ export class UsersService {
   /**
    * Deactivate user (soft delete)
    */
-  async deactivate(id: string) {
+  async deactivate(id: string): Promise<UserStatusActionResponse> {
     // Check exists
-    await this.findOne(id);
+    const user = await this.findOne(id);
+
+    if (!user.isActive) {
+      return { success: true, message: 'User is already inactive' };
+    }
 
     const { error } = await this.supabase.client
       .from('users')
@@ -214,6 +223,32 @@ export class UsersService {
     }
 
     return { success: true, message: 'User deactivated' };
+  }
+
+  /**
+   * Reactivate user
+   */
+  async activate(id: string): Promise<UserStatusActionResponse> {
+    const user = await this.findOne(id);
+
+    if (user.isActive) {
+      return { success: true, message: 'User is already active' };
+    }
+
+    const { error } = await this.supabase.client
+      .from('users')
+      .update({
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('[UsersService] activate:', error);
+      throw new InternalServerErrorException('Failed to activate user');
+    }
+
+    return { success: true, message: 'User activated' };
   }
 
   // ═══════════════════════════════════════════════════════════

@@ -16,7 +16,10 @@ export default function InventoryDashboardPage() {
     isLoading,
     isError,
     error: queryError,
-  } = useQuery(["inventory"], () => inventoryApi.getAll());
+  } = useQuery({
+    queryKey: ["inventory"],
+    queryFn: () => inventoryApi.getAll(),
+  });
 
   useEffect(() => {
     if (data && !isLoading) {

@@ -8,9 +8,10 @@ import Link from "next/link";
 export function LowStockWidget() {
   const [count, setCount] = useState(0);
 
-  const { data, isLoading } = useQuery(["lowStockCount"], () =>
-    inventoryApi.getLowStock(),
-  );
+  const { data, isLoading } = useQuery({
+    queryKey: ["lowStockCount"],
+    queryFn: () => inventoryApi.getLowStock(),
+  });
 
   useEffect(() => {
     if (data) {

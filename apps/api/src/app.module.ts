@@ -11,7 +11,12 @@ import { ProductsModule } from './products/products.module';
 import { UsersModule } from './users/users.module';
 import { ShipmentsModule } from './shipments/shipments.module';
 import { ReportsModule } from './reports/reports.module';
-
+import { InventoryModule } from './inventory/inventory.module';
+import { ProductionModule } from './production/production.module';
+import { RecipesModule } from './recipes/recipes.module';
+import { InventoriesModule } from './inventories/inventories.module';
+import { BatchesModule } from './batches/batches.module';
+import { NotificationsModule } from './notifications/notifications.module';
 /**
  * AppModule - Root Module
  *

@@ -136,12 +136,17 @@ export class ReportsService {
 
   // Orders report -----------------------------------------------------------
 
+  /** End of day for dateTo so the range is inclusive of the full day */
+  private toEndOfDay(dateTo: string): string {
+    return `${dateTo}T23:59:59.999Z`;
+  }
+
   async getOrdersReport(query: ReportQueryDto): Promise<OrdersReportDto> {
     let dbQuery = this.client
       .from('orders')
       .select('created_at,status,total_amount,store_id')
       .gte('created_at', query.dateFrom)
-      .lte('created_at', query.dateTo);
+      .lte('created_at', this.toEndOfDay(query.dateTo));
 
     if (query.storeId) {
       dbQuery = dbQuery.eq('store_id', query.storeId);
@@ -207,7 +212,7 @@ export class ReportsService {
       `,
       )
       .gte('created_at', query.dateFrom)
-      .lte('created_at', query.dateTo);
+      .lte('created_at', this.toEndOfDay(query.dateTo));
 
     if (query.search) {
       dbQuery = dbQuery.ilike('items.name', `%${query.search}%`);
@@ -304,7 +309,7 @@ export class ReportsService {
       .from('shipments')
       .select('created_at,status,shipped_date,delivered_date')
       .gte('created_at', query.dateFrom)
-      .lte('created_at', query.dateTo);
+      .lte('created_at', this.toEndOfDay(query.dateTo));
 
     const { data, error } = await dbQuery;
 

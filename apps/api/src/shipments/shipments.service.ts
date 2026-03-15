@@ -84,12 +84,18 @@ export class ShipmentsService {
     await this.supabase.from('orders').update({ status }).eq('id', orderId);
   }
 
-  async findAll() {
-    const { data, error } = await this.supabase
+  async findAll(user: AuthUser) {
+    let query = this.supabase
       .from('shipments')
-      .select('*, orders(order_code, store_id, stores(name))')
+      .select('*, orders!inner(order_code, store_id, stores(name))')
       .neq('status', 'cancelled')
       .order('id', { ascending: false });
+
+    if ((user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF) {
+      query = query.eq('orders.store_id', user.storeId ?? -1);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
@@ -136,7 +142,12 @@ export class ShipmentsService {
 
   async create(dto: CreateShipmentDto, user: AuthUser) {
     if (
-      ![UserRoleEnum.ADMIN, UserRoleEnum.COORDINATOR].includes(
+      ![
+        UserRoleEnum.ADMIN,
+        UserRoleEnum.COORDINATOR,
+        UserRoleEnum.MANAGER,
+        UserRoleEnum.CK_STAFF,
+      ].includes(
         user.role as UserRoleEnum,
       )
     ) {
@@ -186,7 +197,9 @@ export class ShipmentsService {
     return shipment;
   }
 
-  async getItems(shipmentId: number) {
+  async getItems(shipmentId: number, user: AuthUser) {
+    await this.ensureStoreShipmentAccess(shipmentId, user);
+
     const { data, error } = await this.supabase
       .from('shipment_items')
       .select(
@@ -435,7 +448,7 @@ export class ShipmentsService {
   //   return { success: true, message: `Đã hủy thành công vận đơn #${id}` };
   // }
 
-  async traceBatch(batchId: number) {
+  async traceBatch(batchId: number, user: AuthUser) {
     const { data, error } = await this.supabase
       .from('shipment_items')
       .select(
@@ -451,10 +464,19 @@ export class ShipmentsService {
       .eq('batch_id', batchId);
 
     if (error) throw new InternalServerErrorException(error.message);
+
+    if ((user.role as UserRoleEnum) === UserRoleEnum.STORE_STAFF) {
+      return (data ?? []).filter(
+        (row) => row.shipments?.orders?.store_id === user.storeId,
+      );
+    }
+
     return data;
   }
 
-  async traceShipment(id: number) {
+  async traceShipment(id: number, user: AuthUser) {
+    await this.ensureStoreShipmentAccess(id, user);
+
     const { data, error } = await this.supabase
       .from('shipment_items')
       .select(
@@ -467,6 +489,31 @@ export class ShipmentsService {
 
     if (error) throw new InternalServerErrorException(error.message);
     return data;
+  }
+
+  private async ensureStoreShipmentAccess(
+    shipmentId: number,
+    user: AuthUser,
+  ): Promise<void> {
+    if ((user.role as UserRoleEnum) !== UserRoleEnum.STORE_STAFF) {
+      return;
+    }
+
+    const { data: shipment, error } = await this.supabase
+      .from('shipments')
+      .select('id, orders!inner(store_id)')
+      .eq('id', shipmentId)
+      .single();
+
+    if (error || !shipment) {
+      throw new NotFoundException(`Shipment #${shipmentId} not found`);
+    }
+
+    if (shipment.orders.store_id !== user.storeId) {
+      throw new ForbiddenException(
+        `You are not allowed to access Shipment #${shipmentId}`,
+      );
+    }
   }
 
   async updateItem(

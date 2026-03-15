@@ -15,3 +15,4 @@ export * from './report';
 export * from './production';
 export * from './recipe';
 export * from './notification';
+export * from './inventory';

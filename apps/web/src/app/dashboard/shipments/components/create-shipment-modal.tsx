@@ -7,10 +7,12 @@ import { Modal, Button } from "@/components/ui";
 import { shipmentsApi } from "@/lib/api/shipments";
 import { orderApi } from "@/lib/api/orders";
 import { AlertCircle } from "lucide-react";
+import type { OrderResponse } from "@repo/types";
 
 export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any) {
 
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [orders, setOrders] = useState<OrderResponse[]>([]);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [batches, setBatches] = useState<Record<number, any[]>>({});
@@ -21,6 +23,43 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
 
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadProcessedOrders = async () => {
+      setIsLoadingOrders(true);
+      try {
+        const firstPage = await orderApi.getAll({ status: "processed", page: 1, limit: 100 });
+        let merged = [...(firstPage.data || [])];
+
+        const totalPages = firstPage.meta?.totalPages || 1;
+        if (totalPages > 1) {
+          const rest = await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, idx) =>
+              orderApi.getAll({ status: "processed", page: idx + 2, limit: 100 }),
+            ),
+          );
+
+          merged = merged.concat(...rest.map((r) => r.data || []));
+        }
+
+        const processedOnly = merged.filter(
+          (order) => order.status === "processed",
+        );
+
+        processedOnly.sort((a, b) => b.id - a.id);
+        setOrders(processedOnly);
+      } catch {
+        setOrders([]);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
+    loadProcessedOrders();
+  }, [isOpen]);
 
   const loadBatches = async (itemId: number) => {
     if (batches[itemId]) return;
@@ -39,11 +78,16 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
   };
 
   useEffect(() => {
-    if (!orderId) return;
+    if (!orderId) {
+      setOrderItems([]);
+      setSelectedItems([]);
+      return;
+    }
 
     const loadItems = async () => {
       const res = await orderApi.getOrderItemsWithRemaining(orderId);
       setOrderItems(res);
+      setSelectedItems([]);
     };
 
     loadItems();
@@ -129,13 +173,23 @@ export default function CreateShipmentModal({ isOpen, onClose, onSuccess }: any)
 
         <div>
           <label className="font-bold">Order ID</label>
-          <input
-            type="number"
-            placeholder="Order ID"
+          <select
             value={orderId ?? ""}
-            onChange={(e) => setOrderId(Number(e.target.value))}
+            onChange={(e) =>
+              setOrderId(e.target.value ? Number(e.target.value) : null)
+            }
             className="w-full border rounded px-3 h-10"
-          />
+            disabled={isLoadingOrders}
+          >
+            <option value="">
+              {isLoadingOrders ? "Loading processed orders..." : "Select processed order"}
+            </option>
+            {orders.map((order) => (
+              <option key={order.id} value={order.id}>
+                #{order.id} - {order.orderCode} - {order.storeName || `Store ${order.storeId}`}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="border rounded p-3 space-y-3">

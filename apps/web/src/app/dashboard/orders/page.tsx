@@ -412,7 +412,7 @@ export default function OrdersPage() {
                     >
                       Details
                     </Button>
-                    {canChangeStatus && order.status !== ORDER_STATUS.PENDING && (
+                    {canChangeStatus && order.status !== ORDER_STATUS.PENDING && order.status !== ORDER_STATUS.DELIVERED && (
                       <select
                         value={order.status as OrderStatus}
                         onChange={(e) =>
@@ -461,7 +461,7 @@ export default function OrdersPage() {
                         Approve
                       </button>
                     )}
-                    {canChangeStatus && (
+                    {canChangeStatus && order.status !== ORDER_STATUS.DELIVERED && (
                       <button
                         onClick={() => setDeleteId(order.id)}
                         className="text-red-600 hover:text-red-800"

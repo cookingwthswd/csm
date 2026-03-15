@@ -36,6 +36,18 @@ export interface InventoryTransactionRecord {
   };
 }
 
+export interface CreateBatchPayload {
+  batch_code?: string;
+  item_id: number;
+  manufacture_date?: string;
+  expiry_date?: string;
+  initial_quantity: number;
+  current_quantity?: number;
+  status?: 'active' | 'expired' | 'depleted';
+}
+
+export type UpdateBatchPayload = Partial<CreateBatchPayload>;
+
 export const batchesApi = {
 
   /**
@@ -57,4 +69,16 @@ export const batchesApi = {
     api.get<InventoryTransactionRecord[]>(
       `/batches/${batchId}/transactions`
     ),
+
+  /**
+   * Create batch
+   */
+  createBatch: (payload: CreateBatchPayload) =>
+    api.post<BatchRecord>(`/batches`, payload),
+
+  /**
+   * Update batch
+   */
+  updateBatch: (batchId: number, payload: UpdateBatchPayload) =>
+    api.put<BatchRecord>(`/batches/${batchId}`, payload),
 };

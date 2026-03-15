@@ -43,8 +43,15 @@ export class ShipmentsController {
   @Get()
   @ApiOperation({ summary: 'List shipments' })
   @ApiResponse({ status: 200, description: 'List of shipments' })
-  findAll() {
-    return this.service.findAll();
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.STORE_STAFF,
+  )
+  findAll(@CurrentUser() user: AuthUser) {
+    return this.service.findAll(user);
   }
 
   /**
@@ -55,6 +62,13 @@ export class ShipmentsController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Shipment details' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.STORE_STAFF,
+  )
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: AuthUser,
@@ -110,8 +124,18 @@ export class ShipmentsController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'List of shipment items' })
   @ApiResponse({ status: 404, description: 'Shipment not found' })
-  findItems(@Param('id', ParseIntPipe) id: number) {
-    return this.service.getItems(id);
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.STORE_STAFF,
+  )
+  findItems(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.getItems(id, user);
   }
 
   /**
@@ -145,6 +169,12 @@ export class ShipmentsController {
    * PATCH /shipments/:id - Update shipment details (driver info, notes)
    */
    @Patch(':id')
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+  )
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateShipmentDto
@@ -160,8 +190,18 @@ export class ShipmentsController {
   @Get('trace/:batchId')
   @ApiOperation({ summary: 'Trace batch to shipments' })
   @ApiParam({ name: 'batchId', type: Number })
-  traceBatch(@Param('batchId', ParseIntPipe) batchId: number) {
-    return this.service.traceBatch(batchId);
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.STORE_STAFF,
+  )
+  traceBatch(
+    @Param('batchId', ParseIntPipe) batchId: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.traceBatch(batchId, user);
   }
 
   /**
@@ -170,8 +210,18 @@ export class ShipmentsController {
   @Get(':id/trace')
   @ApiOperation({ summary: 'Trace shipment to batches' })
   @ApiParam({ name: 'id', type: Number })
-  traceShipment(@Param('id', ParseIntPipe) id: number) {
-    return this.service.traceShipment(id);
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+    UserRoleEnum.STORE_STAFF,
+  )
+  traceShipment(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.traceShipment(id, user);
   }
 
   /**
@@ -193,6 +243,12 @@ export class ShipmentsController {
   @Get('batches/item/:itemId')
   @ApiOperation({ summary: 'Get batches for a specific item across all shipments' })
   @ApiParam({ name: 'itemId', type: Number })
+  @Roles(
+    UserRoleEnum.MANAGER,
+    UserRoleEnum.COORDINATOR,
+    UserRoleEnum.ADMIN,
+    UserRoleEnum.CK_STAFF,
+  )
   getBatchesByItem(@Param('itemId', ParseIntPipe) itemId: number) {
     return this.service.getBatchesByItem(itemId);
   }

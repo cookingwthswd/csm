@@ -148,7 +148,7 @@ function NavLink({
       className={`block px-4 py-2 ${
         isActive
           ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-          : "text-gray-700 hover:bg-gray-100"
+          : "text-white hover:bg-gray-100 hover:text-blue-700"
       }`}
     >
       {children}

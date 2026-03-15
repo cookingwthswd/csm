@@ -1,6 +1,6 @@
 /**
  * Inventory DTOs
- *
+ * 
  * Re-exports from @csm/types for consistency with shared type definitions.
  */
 

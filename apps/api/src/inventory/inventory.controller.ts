@@ -20,7 +20,6 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { AuthUser } from '../auth/supabase.strategy';
 import { InventoryService } from './inventory.service';
 import {
   CreateInventoryDto,

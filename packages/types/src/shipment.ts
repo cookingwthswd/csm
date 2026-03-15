@@ -65,6 +65,19 @@ export type UpdateShipmentStatusDto =
 export const ShipmentResponse = z.object({
   id: z.number(),
   order_id: z.number(),
+  orders: z
+    .object({
+      order_code: z.string().optional().nullable(),
+      store_id: z.number().optional().nullable(),
+      stores: z
+        .object({
+          name: z.string().optional().nullable(),
+        })
+        .optional()
+        .nullable(),
+    })
+    .optional()
+    .nullable(),
   shipment_code: z.string(),
   driver_name: z.string().optional().nullable(),
   driver_phone: z.string().optional().nullable(),

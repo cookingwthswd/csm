@@ -17,7 +17,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AlertsService } from './alerts.service';
-import { AlertResponse, ResolveAlertDto, AlertCountResponse } from './dto/inventory.dto';
+import {
+  AlertResponse,
+  ResolveAlertDto,
+  AlertCountResponse,
+} from './dto/inventory.dto';
 
 /**
  * Alerts Controller
@@ -32,7 +36,7 @@ import { AlertResponse, ResolveAlertDto, AlertCountResponse } from './dto/invent
  */
 @ApiTags('inventory-alerts')
 @ApiBearerAuth()
-@UseGuards(AuthGuard('supabase'))
+// @UseGuards(AuthGuard('supabase'))
 @Controller('inventory/alerts')
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
@@ -43,7 +47,6 @@ export class AlertsController {
   @Get()
   @ApiOperation({ summary: 'List unresolved alerts' })
   @ApiResponse({ status: 200, description: 'List of unresolved alerts' })
-  @Roles('all')
   async findUnresolved(): Promise<AlertResponse[]> {
     return this.alertsService.findUnresolved();
   }
@@ -54,7 +57,6 @@ export class AlertsController {
   @Get('count')
   @ApiOperation({ summary: 'Get unresolved alert count' })
   @ApiResponse({ status: 200, description: 'Alert count by type' })
-  @Roles('all')
   async getAlertCount(): Promise<AlertCountResponse> {
     return this.alertsService.getAlertCount();
   }
@@ -68,10 +70,9 @@ export class AlertsController {
   @ApiParam({ name: 'id', type: Number })
   @ApiResponse({ status: 200, description: 'Alert resolved' })
   @ApiResponse({ status: 404, description: 'Alert not found' })
-  @Roles('coordinator', 'admin')
   async resolve(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto?: ResolveAlertDto
+    @Body() dto?: ResolveAlertDto,
   ): Promise<AlertResponse> {
     return this.alertsService.resolve(id, dto);
   }

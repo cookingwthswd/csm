@@ -94,7 +94,7 @@ export default function DashboardLayout({
           <NavLink href="/dashboard/users">Users</NavLink>
           <NavLink href="/dashboard/production">Production</NavLink>
           <NavLink href="/dashboard/recipes">Recipes</NavLink>
-          <NavLink href="/dashboard/inventories">Inventories</NavLink>
+          {/* <NavLink href="/dashboard/inventories">Inventories</NavLink> */}
           <NavLink href="/dashboard/batches">Batches</NavLink>
           <NavLink href="/dashboard/notifications">Notifications</NavLink>
         </nav>

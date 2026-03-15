@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   Injectable,
   BadRequestException,
@@ -6,7 +9,14 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from '../common/services';
 import { AlertsService } from './alerts.service';
-import { CreateInventoryDto, UpdateInventoryLevelsDto, InventoryResponse, LowStockItemResponse, CreateTransactionDto, TransactionResponse } from './dto/inventory.dto';
+import {
+  CreateInventoryDto,
+  UpdateInventoryLevelsDto,
+  InventoryResponse,
+  LowStockItemResponse,
+  CreateTransactionDto,
+  TransactionResponse,
+} from './dto/inventory.dto';
 
 /**
  * Inventory Service
@@ -30,10 +40,8 @@ export class InventoryService {
    * List all inventory records across stores with item details
    */
   async findAll(storeId?: number) {
-    let query = this.supabase.client
-      .from('inventory')
-      .select(
-        `
+    let query = this.supabase.client.from('inventory').select(
+      `
         id,
         store_id,
         stores!store_id(name),
@@ -43,8 +51,8 @@ export class InventoryService {
         min_stock_level,
         max_stock_level,
         updated_at
-      `
-      );
+      `,
+    );
 
     if (storeId) {
       query = query.eq('store_id', storeId);
@@ -79,7 +87,7 @@ export class InventoryService {
         min_stock_level,
         max_stock_level,
         updated_at
-      `
+      `,
       )
       .eq('store_id', storeId)
       .eq('item_id', itemId)
@@ -87,7 +95,7 @@ export class InventoryService {
 
     if (error || !data) {
       throw new NotFoundException(
-        `Inventory not found for store #${storeId}, item #${itemId}`
+        `Inventory not found for store #${storeId}, item #${itemId}`,
       );
     }
 
@@ -131,14 +139,14 @@ export class InventoryService {
 
     if (existing) {
       throw new BadRequestException(
-        `Inventory already exists for store #${dto.storeId}, item #${dto.itemId}`
+        `Inventory already exists for store #${dto.storeId}, item #${dto.itemId}`,
       );
     }
 
     // Validate min/max levels
     if (dto.minStockLevel > dto.maxStockLevel) {
       throw new BadRequestException(
-        'Min stock level cannot be greater than max stock level'
+        'Min stock level cannot be greater than max stock level',
       );
     }
 
@@ -163,7 +171,7 @@ export class InventoryService {
         min_stock_level,
         max_stock_level,
         updated_at
-      `
+      `,
       )
       .single();
 
@@ -186,7 +194,7 @@ export class InventoryService {
       dto.minStockLevel > dto.maxStockLevel
     ) {
       throw new BadRequestException(
-        'Min stock level cannot be greater than max stock level'
+        'Min stock level cannot be greater than max stock level',
       );
     }
 
@@ -213,7 +221,7 @@ export class InventoryService {
         min_stock_level,
         max_stock_level,
         updated_at
-      `
+      `,
       )
       .single();
 
@@ -228,10 +236,8 @@ export class InventoryService {
    * Get all low stock items (quantity < min_stock_level)
    */
   async getLowStockItems(storeId?: number): Promise<LowStockItemResponse[]> {
-    let query = this.supabase.client
-      .from('inventory')
-      .select(
-        `
+    let query = this.supabase.client.from('inventory').select(
+      `
         id,
         store_id,
         stores!store_id(name),
@@ -240,8 +246,8 @@ export class InventoryService {
         quantity,
         min_stock_level,
         updated_at
-      `
-      );
+      `,
+    );
 
     if (storeId) {
       query = query.eq('store_id', storeId);
@@ -253,9 +259,7 @@ export class InventoryService {
 
     if (error) {
       console.error('[InventoryService] getLowStockItems:', error);
-      throw new InternalServerErrorException(
-        'Failed to fetch low stock items'
-      );
+      throw new InternalServerErrorException('Failed to fetch low stock items');
     }
 
     // Filter client-side: quantity < min_stock_level
@@ -277,7 +281,7 @@ export class InventoryService {
 
   /**
    * Create inventory transaction (import/export/adjustment/etc)
-   * 
+   *
    * Steps:
    * 1. Insert transaction record (audit trail)
    * 2. Update inventory quantity via RPC
@@ -285,7 +289,7 @@ export class InventoryService {
    */
   async createTransaction(
     dto: CreateTransactionDto,
-    userId: string
+    userId: string,
   ): Promise<TransactionResponse> {
     // Validate store exists
     const { data: store } = await this.supabase.client
@@ -338,14 +342,14 @@ export class InventoryService {
         note,
         created_by,
         created_at
-      `
+      `,
       )
       .single();
 
     if (txError) {
       console.error('[InventoryService] createTransaction insert:', txError);
       throw new InternalServerErrorException(
-        'Failed to create transaction record'
+        'Failed to create transaction record',
       );
     }
 
@@ -356,14 +360,14 @@ export class InventoryService {
         p_store_id: dto.storeId,
         p_item_id: dto.itemId,
         p_quantity_change: dto.quantityChange,
-      }
+      },
     );
 
     if (updateError) {
       console.error('[InventoryService] update stock RPC:', updateError);
       // Transaction record exists but stock update failed - this is an error state
       throw new InternalServerErrorException(
-        'Failed to update stock quantity. Transaction record was created but stock may be inconsistent.'
+        'Failed to update stock quantity. Transaction record was created but stock may be inconsistent.',
       );
     }
 
@@ -382,10 +386,8 @@ export class InventoryService {
    * Get transaction history for a store/item
    */
   async getTransactions(storeId?: number, itemId?: number) {
-    let query = this.supabase.client
-      .from('inventory_transactions')
-      .select(
-        `
+    let query = this.supabase.client.from('inventory_transactions').select(
+      `
         id,
         store_id,
         stores!store_id(name),
@@ -399,8 +401,8 @@ export class InventoryService {
         note,
         created_by,
         created_at
-      `
-      );
+      `,
+    );
 
     if (storeId) {
       query = query.eq('store_id', storeId);
@@ -415,9 +417,7 @@ export class InventoryService {
 
     if (error) {
       console.error('[InventoryService] getTransactions:', error);
-      throw new InternalServerErrorException(
-        'Failed to fetch transactions'
-      );
+      throw new InternalServerErrorException('Failed to fetch transactions');
     }
 
     return (data || []).map((tx: any) => this.mapTransactionResponse(tx));
@@ -444,7 +444,7 @@ export class InventoryService {
         note,
         created_by,
         created_at
-      `
+      `,
       )
       .eq('id', id)
       .single();

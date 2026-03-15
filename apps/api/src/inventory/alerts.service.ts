@@ -89,7 +89,7 @@ export class AlertsService {
           item_id,
           items!item_id(name, sku),
           expiry_date,
-          quantity,
+          current_quantity,
           status
         `
         )
@@ -109,7 +109,7 @@ export class AlertsService {
           (new Date(batch.expiry_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
         );
         
-        const message = `Batch ${batch.id} expiring in ${daysUntilExpiry} days (${batch.expiry_date}). Qty: ${batch.quantity}`;
+        const message = `Batch ${batch.id} expiring in ${daysUntilExpiry} days (${batch.expiry_date}). Qty: ${batch.current_quantity}`;
         
         const created = await this.createOrResolveAlert(
           null, // No specific store for batch alerts

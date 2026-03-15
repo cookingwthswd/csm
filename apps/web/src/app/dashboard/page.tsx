@@ -77,7 +77,7 @@ function statusBadgeClass(status: string): string {
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<TabId>('operations');
 
-  const { data: categories } = useQuery({
+  useQuery({
     queryKey: ['dashboard-categories-count'],
     queryFn: () => categoriesApi.getAll(),
   });
@@ -316,34 +316,41 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {(recentOrdersResp?.data ?? []).map((order: OrderResponse) => (
-                  <tr key={order.id} className="border-b border-gray-100">
-                    <td className="px-4 py-2">
-                      <Link
-                        href={`/dashboard/orders`}
-                        className="font-medium text-blue-600 hover:underline"
-                      >
-                        {order.orderCode}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2 text-gray-700">
-                      {order.storeName ?? `Store ${order.storeId}`}
-                    </td>
-                    <td className="px-4 py-2">{order.items?.length ?? 0}</td>
-                    <td className="px-4 py-2">
-                      {order.totalAmount != null
-                        ? formatVND(order.totalAmount)
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(
-                          order.status
-                        )}`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                  </tr>
+                  (() => {
+                    const orderStatus =
+                      typeof order.status === 'string' ? order.status : 'unknown';
+
+                    return (
+                      <tr key={order.id} className="border-b border-gray-100">
+                        <td className="px-4 py-2">
+                          <Link
+                            href={`/dashboard/orders`}
+                            className="font-medium text-blue-600 hover:underline"
+                          >
+                            {order.orderCode}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2 text-gray-700">
+                          {order.storeName ?? `Store ${order.storeId}`}
+                        </td>
+                        <td className="px-4 py-2">{order.items?.length ?? 0}</td>
+                        <td className="px-4 py-2">
+                          {order.totalAmount != null
+                            ? formatVND(order.totalAmount)
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-2">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(
+                              orderStatus
+                            )}`}
+                          >
+                            {orderStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })()
                 ))}
                 {!recentOrdersResp?.data?.length && (
                   <tr>

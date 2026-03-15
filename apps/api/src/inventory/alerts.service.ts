@@ -19,6 +19,12 @@ import { AlertResponse, ResolveAlertDto, AlertCountResponse, ALERT_TYPE, ALERT_S
 export class AlertsService {
   constructor(private supabase: SupabaseService) {}
 
+  private toIsoOrNull(value: unknown): string | null {
+    if (!value) return null;
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? null : date.toISOString();
+  }
+
   /**
    * Check inventory and create alerts if conditions met
    * Called when stock levels change
@@ -134,33 +140,54 @@ export class AlertsService {
    * Get all unresolved alerts
    */
   async findUnresolved() {
+    const commonSelect = `
+      id,
+      store_id,
+      stores!store_id(name),
+      item_id,
+      items!item_id(name, sku),
+      batch_id,
+      message,
+      created_at,
+      resolved_at
+    `;
+
     const { data, error } = await this.supabase.client
       .from('alerts')
       .select(
         `
-        id,
+        ${commonSelect},
         type,
         status,
-        store_id,
-        stores!store_id(name),
-        item_id,
-        items!item_id(name, sku),
-        batch_id,
-        message,
-        metadata,
-        created_at,
-        resolved_at
+        metadata
       `
       )
       .neq('status', ALERT_STATUS.RESOLVED)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('[AlertsService] findUnresolved:', error);
+    if (!error) {
+      return (data || []).map((alert) => this.mapAlertResponse(alert));
+    }
+
+    const { data: legacyData, error: legacyError } = await this.supabase.client
+      .from('alerts')
+      .select(
+        `
+        ${commonSelect},
+        alert_type,
+        is_resolved
+      `
+      )
+      .neq('is_resolved', true)
+      .order('created_at', { ascending: false });
+
+    if (legacyError) {
+      console.error('[AlertsService] findUnresolved (new schema):', error);
+      console.error('[AlertsService] findUnresolved (legacy schema):', legacyError);
       throw new InternalServerErrorException('Failed to fetch alerts');
     }
 
-    return (data || []).map((alert) => this.mapAlertResponse(alert));
+    return (legacyData || []).map((alert) => this.mapLegacyAlertResponse(alert));
   }
 
   /**
@@ -173,8 +200,26 @@ export class AlertsService {
       .neq('status', ALERT_STATUS.RESOLVED);
 
     if (error) {
-      console.error('[AlertsService] getAlertCount:', error);
-      throw new InternalServerErrorException('Failed to count alerts');
+      const { data: legacyData, error: legacyError } = await this.supabase.client
+        .from('alerts')
+        .select('alert_type, is_resolved')
+        .neq('is_resolved', true);
+
+      if (legacyError) {
+        console.error('[AlertsService] getAlertCount (new schema):', error);
+        console.error('[AlertsService] getAlertCount (legacy schema):', legacyError);
+        throw new InternalServerErrorException('Failed to count alerts');
+      }
+
+      const byType: Record<string, number> = {};
+      let total = 0;
+
+      for (const alert of legacyData || []) {
+        total++;
+        byType[alert.alert_type] = (byType[alert.alert_type] || 0) + 1;
+      }
+
+      return { total, byType };
     }
 
     const byType: Record<string, number> = {};
@@ -218,11 +263,39 @@ export class AlertsService {
       )
       .single();
 
-    if (error || !data) {
+    if (!error && data) {
+      return this.mapAlertResponse(data);
+    }
+
+    const { data: legacyData, error: legacyError } = await this.supabase.client
+      .from('alerts')
+      .update({
+        is_resolved: true,
+        resolved_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select(
+        `
+        id,
+        alert_type,
+        is_resolved,
+        store_id,
+        stores!store_id(name),
+        item_id,
+        items!item_id(name, sku),
+        batch_id,
+        message,
+        created_at,
+        resolved_at
+      `
+      )
+      .single();
+
+    if (legacyError || !legacyData) {
       throw new NotFoundException(`Alert #${id} not found`);
     }
 
-    return this.mapAlertResponse(data);
+    return this.mapLegacyAlertResponse(legacyData);
   }
 
   // ─────────────────────────────────────────────────────────
@@ -326,10 +399,38 @@ export class AlertsService {
       batchId: alert.batch_id,
       message: alert.message,
       metadata: alert.metadata,
-      createdAt: new Date(alert.created_at).toISOString(),
-      resolvedAt: alert.resolved_at
-        ? new Date(alert.resolved_at).toISOString()
-        : null,
+      createdAt: this.toIsoOrNull(alert.created_at) ?? new Date().toISOString(),
+      resolvedAt: this.toIsoOrNull(alert.resolved_at),
+    };
+  }
+
+  private mapLegacyAlertResponse(alert: any): AlertResponse {
+    const legacyType = String(alert.alert_type || '').toLowerCase();
+    const mappedType =
+      legacyType === 'low_stock'
+        ? ALERT_TYPE.LOW_STOCK
+        : legacyType === 'out_of_stock'
+        ? ALERT_TYPE.OUT_OF_STOCK
+        : legacyType === 'expiring_soon'
+        ? ALERT_TYPE.EXPIRING_SOON
+        : legacyType === 'expired_found'
+        ? ALERT_TYPE.EXPIRED_FOUND
+        : ALERT_TYPE.LOW_STOCK;
+
+    return {
+      id: alert.id,
+      type: mappedType,
+      status: alert.is_resolved ? ALERT_STATUS.RESOLVED : ALERT_STATUS.UNRESOLVED,
+      storeId: alert.store_id,
+      storeName: alert.stores?.name || null,
+      itemId: alert.item_id,
+      itemName: alert.items?.name || 'Unknown Item',
+      itemSku: alert.items?.sku || 'N/A',
+      batchId: alert.batch_id,
+      message: alert.message,
+      metadata: null,
+      createdAt: this.toIsoOrNull(alert.created_at) ?? new Date().toISOString(),
+      resolvedAt: this.toIsoOrNull(alert.resolved_at),
     };
   }
 }

@@ -17,7 +17,11 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { AlertsService } from './alerts.service';
-import { AlertResponse, ResolveAlertDto, AlertCountResponse } from './dto/inventory.dto';
+import {
+  AlertResponse,
+  ResolveAlertDto,
+  AlertCountResponse,
+} from './dto/inventory.dto';
 
 /**
  * Alerts Controller
@@ -71,7 +75,7 @@ export class AlertsController {
   @Roles('coordinator', 'admin')
   async resolve(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto?: ResolveAlertDto
+    @Body() dto?: ResolveAlertDto,
   ): Promise<AlertResponse> {
     return this.alertsService.resolve(id, dto);
   }

@@ -18,13 +18,13 @@ import {
 } from '@nestjs/swagger';
 import { CurrentUser, Roles, CheckStoreAccessGuard } from '../auth';
 import type { AuthUser } from '../auth';
-import { PaginationDto } from '../common';
 import {
   CreateOrderDto,
   UpdateOrderDto,
   UpdateOrderStatusDto,
   ConfirmDeliveryDto,
   AddReviewDto,
+  OrderQueryDto,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { UserRoleEnum } from '../users/dto/user.dto';
@@ -89,10 +89,10 @@ export class OrdersController {
   )
   @UseGuards(CheckStoreAccessGuard)
   findAllOfStore(
-    @Param('storeId', ParseIntPipe) storeId: number, // ParseIntPipe validate & convert
-    @Query() pagination: PaginationDto, // Auto-validate & transform
+    @Param('storeId', ParseIntPipe) storeId: number,
+    @Query() query: OrderQueryDto,
   ) {
-    return this.ordersService.findAll(pagination, storeId);
+    return this.ordersService.findAll(query, storeId);
   }
 
   /**
@@ -123,10 +123,8 @@ export class OrdersController {
     UserRoleEnum.MANAGER,
     UserRoleEnum.COORDINATOR,
   )
-  findAll(
-    @Query() pagination: PaginationDto, // Auto-validate & transform
-  ) {
-    return this.ordersService.findAll(pagination);
+  findAll(@Query() query: OrderQueryDto) {
+    return this.ordersService.findAll(query);
   }
 
   /**

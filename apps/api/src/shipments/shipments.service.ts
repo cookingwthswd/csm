@@ -87,7 +87,7 @@ export class ShipmentsService {
   async findAll() {
     const { data, error } = await this.supabase
       .from('shipments')
-      .select('*, orders(order_code, store_id)')
+      .select('*, orders(order_code, store_id, stores(name))')
       .neq('status', 'cancelled')
       .order('id', { ascending: false });
 

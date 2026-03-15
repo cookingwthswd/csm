@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { inventoryApi } from "@/lib/api/inventory";
 import { AlertList } from "../components/alert-list";
-import type { AlertResponse, ResolveAlertDto } from "@repo/types";
+import type { AlertResponse } from "@repo/types";
 
 export default function InventoryAlertsPage() {
   const queryClient = useQueryClient();
-  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   const {
     data,
@@ -21,14 +18,8 @@ export default function InventoryAlertsPage() {
     queryFn: () => inventoryApi.getAlerts(),
   });
 
-  useEffect(() => {
-    if (data && !isLoading) {
-      setAlerts(data || []);
-    }
-    if (isError && queryError instanceof Error) {
-      setError(queryError.message);
-    }
-  }, [data, isLoading, isError, queryError]);
+  const alerts = data ?? [];
+  const error = isError && queryError instanceof Error ? queryError.message : null;
 
   const resolveMutation = useMutation({
     mutationFn: ({ id, note }: { id: number; note?: string }) =>
@@ -51,7 +42,7 @@ export default function InventoryAlertsPage() {
         <div className="mt-4 rounded bg-red-50 p-3 text-red-600">{error}</div>
       )}
 
-      {!isLoading && alerts && (
+      {!isLoading && (
         <AlertList alerts={alerts} onResolve={handleResolve} />
       )}
     </div>

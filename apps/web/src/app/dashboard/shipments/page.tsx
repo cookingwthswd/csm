@@ -14,6 +14,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function ShipmentsPage() {
 
+  const [searchCode, setSearchCode] = useState("");
+  const [storeFilter, setStoreFilter] = useState("");
   const queryClient = useQueryClient();
   const [data, setData] = useState<ShipmentResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +86,24 @@ export default function ShipmentsPage() {
   useEffect(() => {
     fetchShipments();
   }, []);
+
+  const storeOptions = Array.from(
+    new Set(
+      data
+        .map((shipment) => shipment.orders?.stores?.name)
+        .filter((name): name is string => Boolean(name?.trim()))
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const filteredData = data.filter((shipment) => {
+    const shipmentCode = shipment.shipment_code?.toLowerCase() ?? "";
+    const storeName = shipment.orders?.stores?.name ?? "";
+
+    const matchesSearch = shipmentCode.includes(searchCode.trim().toLowerCase());
+    const matchesStore = storeFilter ? storeName === storeFilter : true;
+
+    return matchesSearch && matchesStore;
+  });
   
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
@@ -95,10 +115,34 @@ export default function ShipmentsPage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="px-4 py-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+            <input
+              type="text"
+              value={searchCode}
+              onChange={(e) => setSearchCode(e.target.value)}
+              placeholder="Search by shipment code..."
+              className="w-full md:max-w-sm rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+            <select
+              value={storeFilter}
+              onChange={(e) => setStoreFilter(e.target.value)}
+              className="w-full md:w-64 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-black focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="">All stores</option>
+              {storeOptions.map((storeName) => (
+                <option key={storeName} value={storeName}>
+                  {storeName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="bg-gray-100 border-b border-gray-200">
               <th className="px-4 py-4 font-semibold text-gray-700">Order ID</th>
+              <th className="px-4 py-4 font-semibold text-gray-700">Store</th>
               <th className="px-4 py-4 font-semibold text-gray-700">Shipment Code</th>
               <th className="px-4 py-4 font-semibold text-gray-700">Status</th>
               <th className="px-4 py-4 font-semibold text-gray-700">Created At</th>
@@ -108,15 +152,18 @@ export default function ShipmentsPage() {
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-black">Loading...</td></tr>
-            ) : data.length === 0 ? (
+            ) : filteredData.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-gray-500">No shipments found.</td></tr>
             ) : (
-              data.map((shipment) => (
+              filteredData.map((shipment) => (
                 <tr key={shipment.id} className="hover:bg-blue-50/50 transition-colors">
                   <td className="px-4 py-4">
                     <span className="bg-gray-100 px-2 py-1 rounded text-xs border border-gray-200 text-black">
                       ORD-{shipment.order_id}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 text-black text-sm font-semibold">
+                    {shipment.orders?.stores?.name ?? "-"}
                   </td>
                   <td className="px-4 py-4 font-mono text-sm text-blue-700 font-bold">{shipment.shipment_code}</td>
                   <td className="px-4 py-4">

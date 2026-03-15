@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { orderApi } from "@/lib/api/orders";
+import { storesApi } from "@/lib/api/stores";
 import { Button } from "@/components/ui";
 import { ConfirmationModal } from "./components/confirmation-modal";
 import type { OrderResponseWithPagination, CreateOrderDto, OrderStatus, OrderResponse, Pagination } from "@repo/types";
@@ -22,7 +23,8 @@ export default function OrdersPage() {
   const [paginationData, setPaginationData] = useState<Pagination | null>(null)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // controlled input, not sent until button click
+  const [searchQuery, setSearchQuery] = useState(""); // actual query sent to API
   const [filterStore, setFilterStore] = useState<number | null>(null);
   const [filterStatus, setFilterStatus] = useState<OrderStatus | null>(null);
   const [sortNewestFirst, setSortNewestFirst] = useState(true);
@@ -65,6 +67,13 @@ export default function OrdersPage() {
     return statuses;
   };
 
+  // Fetch stores for the filter dropdown (only for non-store-staff)
+  const { data: storesData } = useQuery({
+    queryKey: ["stores"],
+    queryFn: () => storesApi.getAll(),
+    enabled: !isStoreStaff,
+  });
+
   // Query for fetching orders - use different API based on role
   const {
     data,
@@ -73,51 +82,23 @@ export default function OrdersPage() {
   } = useQuery<OrderResponseWithPagination>({
     queryKey: ["orders", currentPage, pageSize, profile?.storeId, isStoreStaff, searchQuery, filterStore, filterStatus, sortNewestFirst],
     queryFn: () => {
+      const commonParams = {
+        page: currentPage,
+        limit: pageSize,
+        search: searchQuery || undefined,
+        status: filterStatus || undefined,
+        sort: sortNewestFirst ? 'desc' as const : 'asc' as const,
+      };
       if (isStoreStaff && profile?.storeId) {
-        return orderApi.getAllByStoreId({ 
-          page: currentPage, 
-          limit: pageSize, 
-          storeId: profile.storeId 
-        });
+        return orderApi.getAllByStoreId({ ...commonParams, storeId: profile.storeId });
       }
-      return orderApi.getAll({ page: currentPage, limit: pageSize });
+      return orderApi.getAll({ ...commonParams, storeId: filterStore || undefined });
     },
   });
 
-  // Apply client-side filtering and sorting
-  const filteredAndSortedOrders = () => {
-    if (!orders) return [];
-
-    let filtered = [...orders];
-
-    // Filter by search query (order ID or store name)
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(order =>
-        order.id.toString().includes(query) ||
-        (order.storeName || `Store ${order.storeId}`).toLowerCase().includes(query)
-      );
-    }
-
-    // Filter by store
-    if (filterStore) {
-      filtered = filtered.filter(order => order.storeId === filterStore);
-    }
-
-    // Filter by status
-    if (filterStatus) {
-      filtered = filtered.filter(order => order.status === filterStatus);
-    }
-
-    // Sort by date
-    filtered.sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return sortNewestFirst ? dateB - dateA : dateA - dateB;
-    });
-
-    return filtered;
-  };
+  
+  // Orders are already filtered/sorted by the server
+  const displayedOrders = orders ?? [];
 
   useEffect(() => {
     if (data && !isLoading) {
@@ -306,16 +287,30 @@ export default function OrdersPage() {
         {/* Search */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
-          <input
-            type="text"
-            placeholder="Search by Order ID or Store..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search by Order Code..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  setSearchQuery(searchInput);
+                  setCurrentPage(1);
+                }
+              }}
+              className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-500"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setSearchQuery(searchInput);
+                setCurrentPage(1);
+              }}
+            >
+              Search
+            </Button>
+          </div>
         </div>
 
         {/* Store Filter */}
@@ -331,9 +326,9 @@ export default function OrdersPage() {
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900"
             >
               <option value="">All Stores</option>
-              {orders && [...new Map(orders.map(o => [o.storeId, o])).values()].map(order => (
-                <option key={order.storeId} value={order.storeId}>
-                  {order.storeName || `Store ${order.storeId}`}
+              {storesData?.map(store => (
+                <option key={store.id} value={store.id}>
+                  {store.name}
                 </option>
               ))}
             </select>
@@ -365,7 +360,10 @@ export default function OrdersPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Sort</label>
           <select
             value={sortNewestFirst ? "newest" : "oldest"}
-            onChange={(e) => setSortNewestFirst(e.target.value === "newest")}
+            onChange={(e) => {
+              setSortNewestFirst(e.target.value === "newest");
+              setCurrentPage(1);
+            }}
             className="w-full rounded border border-gray-300 px-3 py-2 text-sm text-gray-900"
           >
             <option value="newest">Newest First</option>
@@ -388,7 +386,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredAndSortedOrders().map((order) => (
+            {displayedOrders.map((order) => (
               <tr key={order.id} className="border-b hover:bg-gray-50 text-black">
                 <td className="p-3 font-medium">
                   {order.id}
@@ -476,7 +474,7 @@ export default function OrdersPage() {
                 </td>
               </tr>
             ))}
-            {filteredAndSortedOrders().length === 0 && (
+            {displayedOrders.length === 0 && (
               <tr>
                 <td colSpan={7} className="p-6 text-center text-gray-500">
                   No orders found

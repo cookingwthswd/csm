@@ -322,30 +322,6 @@ export class OrderResponseDto {
  * Query parameters for listing orders
  */
 export class OrderQueryDto {
-  @ApiPropertyOptional({
-    description: 'Filter by status',
-    enum: ORDER_STATUSES,
-  })
-  @IsOptional()
-  @IsIn(ORDER_STATUSES)
-  status?: OrderStatus;
-
-  @ApiPropertyOptional({
-    description: 'Filter by delivery date from',
-    example: '2026-01-01',
-  })
-  @IsOptional()
-  @IsDateString()
-  deliveryDateFrom?: string;
-
-  @ApiPropertyOptional({
-    description: 'Filter by delivery date to',
-    example: '2026-01-31',
-  })
-  @IsOptional()
-  @IsDateString()
-  deliveryDateTo?: string;
-
   @ApiPropertyOptional({ description: 'Page number', example: 1, minimum: 1 })
   @IsOptional()
   @IsInt()
@@ -364,4 +340,36 @@ export class OrderQueryDto {
   @IsPositive()
   @Type(() => Number)
   limit?: number = 10;
+
+  @ApiPropertyOptional({
+    description: 'Filter by status',
+    enum: ORDER_STATUSES,
+  })
+  @IsOptional()
+  @IsIn(ORDER_STATUSES)
+  status?: OrderStatus;
+
+  @ApiPropertyOptional({
+    description: 'Search by order code',
+    example: 'ORD-20260315',
+  })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by store ID', example: 1 })
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  @Type(() => Number)
+  storeId?: number;
+
+  @ApiPropertyOptional({
+    description: 'Sort by created date',
+    enum: ['asc', 'desc'],
+    default: 'desc',
+  })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sort?: 'asc' | 'desc' = 'desc';
 }

@@ -17,10 +17,10 @@ import {
   PostgrestError,
 } from '@supabase/supabase-js';
 import { ORDER_STATUS_VALUES, type Database } from '@repo/types';
-import { PaginationDto } from '../common';
 import {
   CreateOrderDto,
   ORDER_STATUSES,
+  OrderQueryDto,
   UpdateOrderDto,
   UpdateOrderStatusDto,
 } from './dto/order.dto';
@@ -79,11 +79,11 @@ export class OrdersService {
    * @param pagination - { page, limit }
    * @returns { data: Order[], meta: { total, page, limit, totalPages } }
    */
-  async findAll(pagination: PaginationDto, storeId?: number) {
-    const { page, limit } = pagination;
+  async findAll(query: OrderQueryDto, storeId?: number) {
+    const { page = 1, limit = 10, status, search, storeId: filterStoreId, sort } = query;
     const offset = (page - 1) * limit;
 
-    let query = this.supabase
+    let dbQuery = this.supabase
       .from('orders')
       .select(
         `
@@ -103,14 +103,26 @@ export class OrdersService {
   `,
         { count: 'exact' },
       )
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: sort === 'asc' })
       .range(offset, offset + limit - 1);
 
+    // storeId from route param takes priority (store_staff access)
     if (storeId !== undefined) {
-      query = query.eq('store_id', storeId);
+      dbQuery = dbQuery.eq('store_id', storeId);
+    } else if (filterStoreId !== undefined) {
+      dbQuery = dbQuery.eq('store_id', filterStoreId);
     }
+
+    if (status) {
+      dbQuery = dbQuery.eq('status', status);
+    }
+
+    if (search) {
+      dbQuery = dbQuery.ilike('order_code', `%${search}%`);
+    }
+
     // Query với count để biết tổng số records
-    const { data, error, count } = await query;
+    const { data, error, count } = await dbQuery;
 
     if (error) this.handleError(error, 'Failed to fetch orders');
 

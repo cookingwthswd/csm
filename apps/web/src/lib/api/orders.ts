@@ -17,10 +17,12 @@ export const orderApi = {
     /**
      * Get all orders with optional filters
      */
-    getAll: async (query?: { status?: OrderStatus; user_id?: number; page?: number; limit?: number }) => {
+    getAll: async (query?: { status?: OrderStatus; search?: string; storeId?: number; sort?: 'asc' | 'desc'; page?: number; limit?: number }) => {
         const params = new URLSearchParams();
         if (query?.status) params.set('status', query.status);
-        if (query?.user_id) params.set('user_id', String(query.user_id));
+        if (query?.search) params.set('search', query.search);
+        if (query?.storeId) params.set('storeId', String(query.storeId));
+        if (query?.sort) params.set('sort', query.sort);
         if (query?.page) params.set('page', String(query.page));
         if (query?.limit) params.set('limit', String(query.limit));
 
@@ -31,10 +33,11 @@ export const orderApi = {
     /**
      * Get all orders of a store
      */
-    getAllByStoreId: async (query?: { status?: OrderStatus; user_id?: number; page?: number; limit?: number; storeId: number }) => {
+    getAllByStoreId: async (query?: { status?: OrderStatus; search?: string; sort?: 'asc' | 'desc'; page?: number; limit?: number; storeId: number }) => {
         const params = new URLSearchParams();
         if (query?.status) params.set('status', query.status);
-        if (query?.user_id) params.set('user_id', String(query.user_id));
+        if (query?.search) params.set('search', query.search);
+        if (query?.sort) params.set('sort', query.sort);
         if (query?.page) params.set('page', String(query.page));
         if (query?.limit) params.set('limit', String(query.limit));
 

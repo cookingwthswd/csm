@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/providers/auth-provider';
-import Link from 'next/link';
-import { useNotificationRealtime } from '@/features/notifications/hooks/use-notification-realtime';
-import { NotificationBell } from '@/features/notifications/components/notification-bell';
-import { Toaster } from 'sonner';
+import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/providers/auth-provider";
+import Link from "next/link";
+import { useNotificationRealtime } from "@/features/notifications/hooks/use-notification-realtime";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { Toaster } from "sonner";
 /**
  * Dashboard Layout - Sidebar Navigation
  */

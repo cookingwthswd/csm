@@ -6,19 +6,10 @@ import {
 import { SupabaseService } from '../common/services';
 import { CreateCategoryDto, UpdateCategoryDto } from './dto/category.dto';
 
-/**
- * Categories Service
- *
- * CRUD operations for product categories.
- * Uses SupabaseService (singleton) from CommonModule.
- */
 @Injectable()
 export class CategoriesService {
   constructor(private supabase: SupabaseService) {}
 
-  /**
-   * Get all categories
-   */
   async findAll() {
     const { data, error } = await this.supabase.client
       .from('categories')
@@ -33,9 +24,6 @@ export class CategoriesService {
     return data || [];
   }
 
-  /**
-   * Get category by ID
-   */
   async findOne(id: number) {
     const { data, error } = await this.supabase.client
       .from('categories')
@@ -50,9 +38,6 @@ export class CategoriesService {
     return data;
   }
 
-  /**
-   * Create new category
-   */
   async create(dto: CreateCategoryDto) {
     const { data, error } = await this.supabase.client
       .from('categories')
@@ -71,11 +56,7 @@ export class CategoriesService {
     return data;
   }
 
-  /**
-   * Update category
-   */
   async update(id: number, dto: UpdateCategoryDto) {
-    // Check exists
     await this.findOne(id);
 
     const { data, error } = await this.supabase.client
@@ -96,11 +77,7 @@ export class CategoriesService {
     return data;
   }
 
-  /**
-   * Delete category
-   */
   async delete(id: number) {
-    // Check exists
     await this.findOne(id);
 
     const { error } = await this.supabase.client

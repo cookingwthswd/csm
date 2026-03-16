@@ -4,28 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { SupabaseService } from '../common/services';
-import {
-  CreateStoreDto,
-  StoreQueryDto,
-  UpdateStoreDto,
-} from './dto/store.dto';
+import { CreateStoreDto, StoreQueryDto, UpdateStoreDto } from './dto/store.dto';
 
-/**
- * Stores Service
- *
- * Manages franchise stores and central kitchen locations.
- */
 @Injectable()
 export class StoresService {
   constructor(private supabase: SupabaseService) {}
 
-  /**
-   * Get all stores with optional filtering
-   */
   async findAll(query: StoreQueryDto = {}) {
     let builder = this.supabase.client.from('stores').select('*');
 
-    // Apply filters
     if (query.type) {
       builder = builder.eq('type', query.type);
     }
@@ -43,9 +30,6 @@ export class StoresService {
     return this.transformStores(data || []);
   }
 
-  /**
-   * Get store by ID
-   */
   async findOne(id: number) {
     const { data, error } = await this.supabase.client
       .from('stores')
@@ -60,9 +44,6 @@ export class StoresService {
     return this.transformStore(data);
   }
 
-  /**
-   * Create new store
-   */
   async create(dto: CreateStoreDto) {
     const { data, error } = await this.supabase.client
       .from('stores')
@@ -85,11 +66,7 @@ export class StoresService {
     return this.transformStore(data);
   }
 
-  /**
-   * Update store
-   */
   async update(id: number, dto: UpdateStoreDto) {
-    // Check exists
     await this.findOne(id);
 
     const updateData: Record<string, unknown> = {
@@ -118,11 +95,7 @@ export class StoresService {
     return this.transformStore(data);
   }
 
-  /**
-   * Soft delete store (set is_active = false)
-   */
   async delete(id: number) {
-    // Check exists
     await this.findOne(id);
 
     const { error } = await this.supabase.client
@@ -137,10 +110,6 @@ export class StoresService {
 
     return { success: true, message: `Store #${id} deactivated` };
   }
-
-  // ═══════════════════════════════════════════════════════════
-  // TRANSFORM HELPERS
-  // ═══════════════════════════════════════════════════════════
 
   private transformStores(stores: StoreRow[]) {
     return stores.map((s) => this.transformStore(s));
@@ -160,10 +129,6 @@ export class StoresService {
     };
   }
 }
-
-// ═══════════════════════════════════════════════════════════
-// TYPE DEFINITIONS
-// ═══════════════════════════════════════════════════════════
 
 interface StoreRow {
   id: number;

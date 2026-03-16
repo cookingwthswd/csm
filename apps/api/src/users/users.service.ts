@@ -19,20 +19,10 @@ export interface UserStatusActionResponse {
   message: string;
 }
 
-/**
- * Users Service
- *
- * Manages user profiles in public.users table.
- * User authentication is handled by Supabase Auth (auth.users).
- */
 @Injectable()
 export class UsersService {
   constructor(private supabase: SupabaseService) {}
 
-  /**
-   * Get all users with optional filtering
-   * Only admin and manager can access
-   */
   async findAll(query: UserQueryDto = {}) {
     let builder = this.supabase.client
       .from('users')
@@ -60,16 +50,10 @@ export class UsersService {
     return this.transformUsers(data || []);
   }
 
-  /**
-   * Get current user profile
-   */
   async findMe(authUser: AuthUser) {
     return this.findOne(authUser.id);
   }
 
-  /**
-   * Get user by ID
-   */
   async findOne(id: string) {
     const { data, error } = await this.supabase.client
       .from('users')
@@ -84,17 +68,12 @@ export class UsersService {
     return this.transformUser(data);
   }
 
-  /**
-   * Create new user (admin only)
-   * Creates both auth.users and public.users entries
-   */
   async create(dto: CreateUserDto) {
-    // 1. Create auth user via Supabase Admin API
     const { data: authData, error: authError } =
       await this.supabase.adminClient.auth.admin.createUser({
         email: dto.email,
         password: dto.password,
-        email_confirm: true, // Auto-confirm email
+        email_confirm: true,
       });
 
     if (authError) {
@@ -107,7 +86,6 @@ export class UsersService {
 
     const userId = authData.user.id;
 
-    // 2. Create public.users entry
     const { data, error } = await this.supabase.client
       .from('users')
       .insert({
@@ -124,7 +102,6 @@ export class UsersService {
 
     if (error) {
       console.error('[UsersService] create public user:', error);
-      // Rollback: delete auth user
       await this.supabase.adminClient.auth.admin.deleteUser(userId);
       throw new InternalServerErrorException('Failed to create user profile');
     }
@@ -132,17 +109,11 @@ export class UsersService {
     return this.transformUser(data);
   }
 
-  /**
-   * Update user profile
-   * Admin can update any user, users can update themselves
-   */
   async update(id: string, dto: UpdateUserDto, authUser: AuthUser) {
-    // Check permission: admin or self
     if (authUser.role !== 'admin' && authUser.id !== id) {
       throw new ForbiddenException('Cannot update other users');
     }
 
-    // Check exists
     await this.findOne(id);
 
     const updateData: Record<string, unknown> = {
@@ -152,7 +123,6 @@ export class UsersService {
     if (dto.fullName !== undefined) updateData.full_name = dto.fullName;
     if (dto.phone !== undefined) updateData.phone = dto.phone;
 
-    // Only admin can update store_id and is_active
     if (authUser.role === 'admin') {
       if (dto.storeId !== undefined) updateData.store_id = dto.storeId;
       if (dto.isActive !== undefined) updateData.is_active = dto.isActive;
@@ -173,11 +143,7 @@ export class UsersService {
     return this.transformUser(data);
   }
 
-  /**
-   * Update user role (admin only)
-   */
   async updateRole(id: string, dto: UpdateRoleDto) {
-    // Check exists
     await this.findOne(id);
 
     const { data, error } = await this.supabase.client
@@ -198,11 +164,7 @@ export class UsersService {
     return this.transformUser(data);
   }
 
-  /**
-   * Deactivate user (soft delete)
-   */
   async deactivate(id: string): Promise<UserStatusActionResponse> {
-    // Check exists
     const user = await this.findOne(id);
 
     if (!user.isActive) {
@@ -225,9 +187,6 @@ export class UsersService {
     return { success: true, message: 'User deactivated' };
   }
 
-  /**
-   * Reactivate user
-   */
   async activate(id: string): Promise<UserStatusActionResponse> {
     const user = await this.findOne(id);
 
@@ -251,10 +210,6 @@ export class UsersService {
     return { success: true, message: 'User activated' };
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // TRANSFORM HELPERS
-  // ═══════════════════════════════════════════════════════════
-
   private transformUsers(users: UserRow[]) {
     return users.map((u) => this.transformUser(u));
   }
@@ -276,10 +231,6 @@ export class UsersService {
     };
   }
 }
-
-// ═══════════════════════════════════════════════════════════
-// TYPE DEFINITIONS
-// ═══════════════════════════════════════════════════════════
 
 interface UserRow {
   id: string;

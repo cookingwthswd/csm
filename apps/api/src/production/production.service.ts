@@ -1,9 +1,20 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../common/services/supabase.service';
 import { ProductionPlanFactory } from './production-plan.factory';
 import { BatchFactory } from './batch.factory';
 import { ProductionStatusFactory } from './production-status.factory';
-import { CreatePlanDto, UpdatePlanDto, UpdatePlanStatusDto, UpdateProductionDetailDto, CreateBatchDto } from './dto/production.dto';
+import {
+  CreatePlanDto,
+  UpdatePlanDto,
+  UpdatePlanStatusDto,
+  UpdateProductionDetailDto,
+  CreateBatchDto,
+} from './dto/production.dto';
 import { AuthUser } from '../auth';
 import { NotificationsService } from '../notifications/notifications.service';
 
@@ -19,7 +30,8 @@ export class ProductionService {
 
   async findAllPlans(page: number, limit: number) {
     const offset = (page - 1) * limit;
-    const { data, count, error } = await this.supabase.getClient()
+    const { data, count, error } = await this.supabase
+      .getClient()
       .from('production_plans')
       .select('*, users!created_by(full_name, role)', { count: 'exact' })
       .order('created_at', { ascending: false })
@@ -39,13 +51,17 @@ export class ProductionService {
   }
 
   async findPlanById(id: number) {
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('production_plans')
-      .select('*, production_details(*, items(name, type)), users!created_by(full_name, role)')
+      .select(
+        '*, production_details(*, items(name, type)), users!created_by(full_name, role)',
+      )
       .eq('id', id)
       .single();
 
-    if (error || !data) throw new NotFoundException('Production plan not found');
+    if (error || !data)
+      throw new NotFoundException('Production plan not found');
     return data;
   }
 
@@ -54,16 +70,19 @@ export class ProductionService {
   }
 
   async updatePlan(id: number, dto: UpdatePlanDto, user: AuthUser) {
-    const { data: plan } = await this.supabase.getClient()
+    const { data: plan } = await this.supabase
+      .getClient()
       .from('production_plans')
       .select('status')
       .eq('id', id)
       .single();
 
     if (!plan) throw new NotFoundException('Plan not found');
-    if (plan.status !== 'planned') throw new ForbiddenException('Can only update planned production');
+    if (plan.status !== 'planned')
+      throw new ForbiddenException('Can only update planned production');
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('production_plans')
       .update({
         start_date: dto.startDate,
@@ -80,7 +99,8 @@ export class ProductionService {
   }
 
   async updatePlanStatus(id: number, dto: UpdatePlanStatusDto, user: AuthUser) {
-    const { data: plan } = await this.supabase.getClient()
+    const { data: plan } = await this.supabase
+      .getClient()
       .from('production_plans')
       .select('status')
       .eq('id', id)
@@ -88,14 +108,20 @@ export class ProductionService {
 
     if (!plan) throw new NotFoundException('Plan not found');
 
-    if (!this.statusFactory.canTransition(plan.status as any, dto.status, user.role)) {
-      throw new ForbiddenException(`Cannot transition from ${plan.status} to ${dto.status} with role ${user.role}`);
+    if (
+      !this.statusFactory.canTransition(
+        plan.status as any,
+        dto.status,
+        user.role,
+      )
+    ) {
+      throw new ForbiddenException(
+        `Cannot transition from ${plan.status} to ${dto.status} with role ${user.role}`,
+      );
     }
 
-    // Logic: If transitioning to "completed", ensure all details are resolved
-    // We assume production staff update details before completing the plan.
-
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('production_plans')
       .update({
         status: dto.status,
@@ -107,24 +133,32 @@ export class ProductionService {
 
     if (error) throw new BadRequestException(error.message);
 
-    // Notify: production plan status changed
     if (dto.status === 'completed') {
-      this.notifications.notifyProductionCompleted(user.id, `Plan #${id}`).catch(() => {});
+      this.notifications
+        .notifyProductionCompleted(user.id, `Plan #${id}`)
+        .catch(() => {});
     }
 
     return data;
   }
 
-  async updateDetailQuantity(planId: number, detailId: number, dto: UpdateProductionDetailDto) {
-    const { data: detail } = await this.supabase.getClient()
+  async updateDetailQuantity(
+    planId: number,
+    detailId: number,
+    dto: UpdateProductionDetailDto,
+  ) {
+    const { data: detail } = await this.supabase
+      .getClient()
       .from('production_details')
       .select('plan_id, status')
       .eq('id', detailId)
       .single();
 
-    if (!detail || detail.plan_id !== planId) throw new NotFoundException('Detail not found');
+    if (!detail || detail.plan_id !== planId)
+      throw new NotFoundException('Detail not found');
 
-    const { data, error } = await this.supabase.getClient()
+    const { data, error } = await this.supabase
+      .getClient()
       .from('production_details')
       .update({
         quantity_produced: dto.quantityProduced,
@@ -137,31 +171,39 @@ export class ProductionService {
     return data;
   }
 
-  async finishDetailAndCreateBatch(planId: number, detailId: number, user: AuthUser) {
-    // 1. Get detail info
-    const { data: detail, error: detailErr } = await this.supabase.getClient()
+  async finishDetailAndCreateBatch(
+    planId: number,
+    detailId: number,
+    user: AuthUser,
+  ) {
+    const { data: detail, error: detailErr } = await this.supabase
+      .getClient()
       .from('production_details')
       .select('*, items(*)')
       .eq('id', detailId)
       .single();
-    
-    if (detailErr || !detail) throw new NotFoundException('Detail not found');
-    if (detail.plan_id !== planId) throw new BadRequestException('Detail does not belong to this plan');
-    if (detail.status === 'completed') throw new BadRequestException('Detail already completed');
-    if (detail.quantity_produced == null) throw new BadRequestException('Produce quantity first before complete');
 
-    // 2. Set detail completed
-    const { error: updErr } = await this.supabase.getClient()
+    if (detailErr || !detail) throw new NotFoundException('Detail not found');
+    if (detail.plan_id !== planId)
+      throw new BadRequestException('Detail does not belong to this plan');
+    if (detail.status === 'completed')
+      throw new BadRequestException('Detail already completed');
+    if (detail.quantity_produced == null)
+      throw new BadRequestException('Produce quantity first before complete');
+
+    const { error: updErr } = await this.supabase
+      .getClient()
       .from('production_details')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', detailId);
 
     if (updErr) throw new BadRequestException('Could not update detail status');
 
-    // 3. Create batch
     const manufactureDate = new Date().toISOString().slice(0, 10);
-    const expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // Default +30 days (business logic)
-    
+    const expiryDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+
     const batchDto: CreateBatchDto = {
       itemId: detail.item_id,
       manufactureDate,
@@ -172,8 +214,8 @@ export class ProductionService {
 
     const batch = await this.batchFactory.create(batchDto, { userId: user.id });
 
-    // 4. Update CK inventory
-    const { data: ckStore } = await this.supabase.getClient()
+    const { data: ckStore } = await this.supabase
+      .getClient()
       .from('stores')
       .select('id')
       .eq('type', 'central_kitchen')
@@ -181,18 +223,17 @@ export class ProductionService {
 
     const ckStoreId = ckStore?.id ?? 1;
 
-    // Get recipe for this product
-    const { data: recipeDetails } = await this.supabase.getClient()
+    const { data: recipeDetails } = await this.supabase
+      .getClient()
       .from('recipe_details')
       .select('material_id, quantity')
       .eq('product_id', detail.item_id);
 
-    // 4a. Deduct raw materials from CK inventory
     for (const rd of recipeDetails || []) {
       const deductQty = rd.quantity * detail.quantity_produced;
 
-      // Use maybeSingle() — returns null data (no error) when row not found
-      const { data: invRow } = await this.supabase.getClient()
+      const { data: invRow } = await this.supabase
+        .getClient()
         .from('inventory')
         .select('id, quantity')
         .eq('store_id', ckStoreId)
@@ -201,17 +242,21 @@ export class ProductionService {
 
       if (invRow) {
         const newQty = Math.max(0, invRow.quantity - deductQty);
-        const { error: deductErr } = await this.supabase.getClient()
+        const { error: deductErr } = await this.supabase
+          .getClient()
           .from('inventory')
           .update({ quantity: newQty })
           .eq('id', invRow.id);
 
-        if (deductErr) throw new BadRequestException(`Failed to deduct material ${rd.material_id}: ${deductErr.message}`);
+        if (deductErr)
+          throw new BadRequestException(
+            `Failed to deduct material ${rd.material_id}: ${deductErr.message}`,
+          );
       }
     }
 
-    // 4b. Add finished product to CK inventory
-    const { data: productInv } = await this.supabase.getClient()
+    const { data: productInv } = await this.supabase
+      .getClient()
       .from('inventory')
       .select('id, quantity')
       .eq('store_id', ckStoreId)
@@ -219,32 +264,49 @@ export class ProductionService {
       .maybeSingle();
 
     if (productInv) {
-      const { error: addErr } = await this.supabase.getClient()
+      const { error: addErr } = await this.supabase
+        .getClient()
         .from('inventory')
         .update({ quantity: productInv.quantity + detail.quantity_produced })
         .eq('id', productInv.id);
 
-      if (addErr) throw new BadRequestException(`Failed to add product to inventory: ${addErr.message}`);
+      if (addErr)
+        throw new BadRequestException(
+          `Failed to add product to inventory: ${addErr.message}`,
+        );
     } else {
-      const { error: insErr } = await this.supabase.getClient()
+      const { error: insErr } = await this.supabase
+        .getClient()
         .from('inventory')
-        .insert({ store_id: ckStoreId, item_id: detail.item_id, quantity: detail.quantity_produced });
+        .insert({
+          store_id: ckStoreId,
+          item_id: detail.item_id,
+          quantity: detail.quantity_produced,
+        });
 
-      if (insErr) throw new BadRequestException(`Failed to create product inventory: ${insErr.message}`);
+      if (insErr)
+        throw new BadRequestException(
+          `Failed to create product inventory: ${insErr.message}`,
+        );
     }
 
-    // Notify: batch completed
     const itemName = (detail.items as any)?.name ?? `Item #${detail.item_id}`;
-    this.notifications.notifyProductionCompleted(user.id, `${itemName} x${detail.quantity_produced}`).catch(() => {});
+    this.notifications
+      .notifyProductionCompleted(
+        user.id,
+        `${itemName} x${detail.quantity_produced}`,
+      )
+      .catch(() => {});
 
     return batch;
   }
 
   async calculateMaterialsRequired(planId: number) {
-    // Implement standard algorithm with Supabase
-    const { data: details, error } = await this.supabase.getClient()
+    const { data: details, error } = await this.supabase
+      .getClient()
       .from('production_details')
-      .select(`
+      .select(
+        `
         quantity_planned,
         items!inner (
           id, name,
@@ -253,17 +315,18 @@ export class ProductionService {
             items!material_id (name, unit)
           )
         )
-      `)
+      `,
+      )
       .eq('plan_id', planId);
 
     if (error) throw new BadRequestException(error.message);
-    
+
     const materialMap = new Map<number, any>();
 
     for (const detail of details || []) {
       const qPlanned = detail.quantity_planned;
       const rDetails = (detail.items as any)?.recipe_details || [];
-      
+
       for (const rd of rDetails) {
         const matId = rd.material_id;
         const matInfo = rd.items;
@@ -282,10 +345,10 @@ export class ProductionService {
       }
     }
 
-    // Now get the Central Kitchen inventory — look up CK store dynamically
     const materialIds = Array.from(materialMap.keys());
     if (materialIds.length > 0) {
-      const { data: ckStore } = await this.supabase.getClient()
+      const { data: ckStore } = await this.supabase
+        .getClient()
         .from('stores')
         .select('id')
         .eq('type', 'central_kitchen')
@@ -293,13 +356,14 @@ export class ProductionService {
 
       const ckStoreId = ckStore?.id ?? 1;
 
-      const { data: inv } = await this.supabase.getClient()
+      const { data: inv } = await this.supabase
+        .getClient()
         .from('inventory')
         .select('item_id, quantity')
         .eq('store_id', ckStoreId)
         .in('item_id', materialIds);
 
-      const invMap = new Map(inv?.map(i => [i.item_id, i.quantity]) || []);
+      const invMap = new Map(inv?.map((i) => [i.item_id, i.quantity]) || []);
 
       for (const mat of materialMap.values()) {
         const stock = invMap.get(mat.materialId) || 0;
@@ -311,10 +375,10 @@ export class ProductionService {
     return Array.from(materialMap.values());
   }
 
-  // BATCHES
   async findAllBatches(page: number, limit: number) {
     const offset = (page - 1) * limit;
-    const { data, count, error } = await this.supabase.getClient()
+    const { data, count, error } = await this.supabase
+      .getClient()
       .from('batches')
       .select('*, items(name)', { count: 'exact' })
       .order('created_at', { ascending: false })
@@ -324,7 +388,12 @@ export class ProductionService {
 
     return {
       data,
-      meta: { total: count || 0, page, limit, totalPages: Math.ceil((count || 0) / limit) },
+      meta: {
+        total: count || 0,
+        page,
+        limit,
+        totalPages: Math.ceil((count || 0) / limit),
+      },
     };
   }
 }

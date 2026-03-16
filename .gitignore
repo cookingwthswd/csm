@@ -52,6 +52,7 @@ secrets.json
 .project
 .classpath
 .settings/
+.memsearch/
 
 # ===========================
 # OS Files

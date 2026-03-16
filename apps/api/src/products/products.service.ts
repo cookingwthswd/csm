@@ -11,18 +11,10 @@ import {
   UpdateProductDto,
 } from './dto/product.dto';
 
-/**
- * Products Service
- *
- * Manages products (items table): materials, semi-finished, finished products.
- */
 @Injectable()
 export class ProductsService {
   constructor(private supabase: SupabaseService) {}
 
-  /**
-   * Get products with pagination and filters
-   */
   async findAll(query: ProductQueryDto) {
     const { page = 1, limit = 20 } = query;
     const offset = (page - 1) * limit;
@@ -31,7 +23,6 @@ export class ProductsService {
       .from('items')
       .select('*, categories(id, name)', { count: 'exact' });
 
-    // Apply filters
     if (query.categoryId) {
       builder = builder.eq('category_id', query.categoryId);
     }
@@ -67,9 +58,6 @@ export class ProductsService {
     };
   }
 
-  /**
-   * Get product by ID
-   */
   async findOne(id: number) {
     const { data, error } = await this.supabase.client
       .from('items')
@@ -84,11 +72,7 @@ export class ProductsService {
     return this.transformProduct(data);
   }
 
-  /**
-   * Create new product
-   */
   async create(dto: CreateProductDto) {
-    // Check SKU uniqueness
     const { data: existing } = await this.supabase.client
       .from('items')
       .select('id')
@@ -122,14 +106,9 @@ export class ProductsService {
     return this.transformProduct(data);
   }
 
-  /**
-   * Update product
-   */
   async update(id: number, dto: UpdateProductDto) {
-    // Check exists
     await this.findOne(id);
 
-    // Check SKU uniqueness if changing
     if (dto.sku) {
       const { data: existing } = await this.supabase.client
         .from('items')
@@ -169,11 +148,7 @@ export class ProductsService {
     return this.transformProduct(data);
   }
 
-  /**
-   * Soft delete product (set is_active = false)
-   */
   async delete(id: number) {
-    // Check exists
     await this.findOne(id);
 
     const { error } = await this.supabase.client
@@ -188,10 +163,6 @@ export class ProductsService {
 
     return { success: true, message: `Product #${id} deactivated` };
   }
-
-  // ═══════════════════════════════════════════════════════════
-  // TRANSFORM HELPERS
-  // ═══════════════════════════════════════════════════════════
 
   private transformProducts(products: ProductRow[]) {
     return products.map((p) => this.transformProduct(p));
@@ -213,10 +184,6 @@ export class ProductsService {
     };
   }
 }
-
-// ═══════════════════════════════════════════════════════════
-// TYPE DEFINITIONS
-// ═══════════════════════════════════════════════════════════
 
 interface ProductRow {
   id: number;

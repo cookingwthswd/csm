@@ -3,9 +3,11 @@ import { useUpdateProductionDetail, useCompleteProductionDetail } from '@/hooks/
 import { CheckCircle, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/providers';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 
 export default function ProductionDetailRow({ detail, planId, planStatus }: { detail: any; planId: number; planStatus: string }) {
   const [produced, setProduced] = useState(detail.quantity_produced || 0);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const updateDetail = useUpdateProductionDetail();
   const completeDetail = useCompleteProductionDetail();
   const { hasRole } = useAuth();
@@ -26,13 +28,15 @@ export default function ProductionDetailRow({ detail, planId, planStatus }: { de
     }
   };
 
-  const handleComplete = async () => {
+  const handleCompleteClick = () => {
     if (detail.quantity_produced === null) {
       toast.warning('Please save a produced quantity before completing.');
       return;
     }
-    if (!confirm('Completing this will generate a batch and update inventory. Proceed?')) return;
+    setIsConfirmOpen(true);
+  };
 
+  const executeComplete = async () => {
     try {
       await completeDetail.mutateAsync({ planId, detailId: detail.id });
       toast.success('Production item completed');
@@ -45,6 +49,14 @@ export default function ProductionDetailRow({ detail, planId, planStatus }: { de
   const isCompleted = detail.status === 'completed';
 
   return (
+    <>
+      <ConfirmModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={executeComplete}
+        title="Complete Production Batch"
+        message="Completing this will instantly generate a batch code and update the central kitchen inventory (adding products and deducting materials). Do you want to proceed?"
+      />
     <tr className="bg-white border-b hover:bg-gray-50">
       <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
         {detail.items?.name || `Product #${detail.item_id}`}
@@ -91,12 +103,13 @@ export default function ProductionDetailRow({ detail, planId, planStatus }: { de
       <td className="px-6 py-4 text-right">
         <button
           className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border shadow-sm border-green-200 bg-green-50 text-green-700 hover:bg-green-100 h-8 px-3 disabled:opacity-50 disabled:pointer-events-none"
-          onClick={handleComplete}
+          onClick={handleCompleteClick}
           disabled={!isActive || isCompleted || completeDetail.isPending}
         >
           <CheckCircle className="mr-2 h-4 w-4" /> Complete
         </button>
       </td>
     </tr>
+    </>
   );
 }

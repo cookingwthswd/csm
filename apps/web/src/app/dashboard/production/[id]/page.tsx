@@ -8,6 +8,7 @@ import MaterialCalculator from '../components/material-calculator';
 import ProductionDetailRow from '../components/production-detail-row';
 import { toast } from 'sonner';
 import { useAuth } from '@/providers';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 
 export default function ProductionPlanPage() {
   const router = useRouter();
@@ -20,21 +21,44 @@ export default function ProductionPlanPage() {
   const canChangeStatus = hasRole('admin', 'manager', 'ck_staff');
   
   const [activeTab, setActiveTab] = useState<'details' | 'materials'>('details');
+  const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, action: any, title: string, message: string, isDestructive?: boolean}>({
+    isOpen: false,
+    action: null,
+    title: '',
+    message: ''
+  });
 
   if (isLoading) return <div className="p-8">Loading details...</div>;
   if (error || !plan) return <div className="p-8 text-red-600">Error loading plan details.</div>;
 
-  const handleStatusChange = async (newStatus: any) => {
-    if (!confirm(`Are you sure you want to change the status to ${newStatus}?`)) return;
-    try {
-      await updateStatus.mutateAsync({ id: planId, data: { status: newStatus } });
-      toast.success(`Status updated to ${newStatus}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to update status');
-    }
+  const handleStatusChange = (newStatus: any) => {
+    setConfirmConfig({
+      isOpen: true,
+      action: async () => {
+        try {
+          await updateStatus.mutateAsync({ id: planId, data: { status: newStatus } });
+          toast.success(`Status updated to ${newStatus.replace('_', ' ').toUpperCase()}`);
+        } catch (err: any) {
+          toast.error(err.response?.data?.message || 'Failed to update status');
+        }
+      },
+      title: newStatus === 'cancelled' ? 'Cancel Production Plan' : 'Confirm Status Change',
+      message: `Are you sure you want to change the status to ${newStatus.replace('_', ' ').toUpperCase()}? This action will affect the production workflow.`,
+      isDestructive: newStatus === 'cancelled'
+    });
   };
 
   return (
+    <>
+      <ConfirmModal 
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({...prev, isOpen: false}))}
+        onConfirm={() => confirmConfig.action && confirmConfig.action()}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isDestructive={confirmConfig.isDestructive}
+        confirmText="Confirm"
+      />
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center space-x-4 mb-6">
         <button
@@ -163,5 +187,6 @@ export default function ProductionPlanPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
